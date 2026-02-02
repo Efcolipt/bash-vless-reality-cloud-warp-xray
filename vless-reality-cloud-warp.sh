@@ -317,6 +317,7 @@ main() {
   apply_sysctl
   set_protocols_forwarding
   add_commands
+  systemctl restart xray
 }
 
 main
