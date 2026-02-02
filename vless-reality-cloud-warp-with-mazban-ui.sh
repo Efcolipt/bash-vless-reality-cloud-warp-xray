@@ -261,7 +261,7 @@ install_marzban() {
 
   mkdir -p /var/lib/marzban/certs
 
-  bash -c .acme.sh/acme.sh \
+  ~/.acme.sh/acme.sh \
     --issue --force --standalone -d "$DOMAIN" \
     --fullchain-file "/var/lib/marzban/certs/$DOMAIN.cer" \
     --key-file "/var/lib/marzban/certs/$DOMAIN.cer.key"
@@ -270,7 +270,7 @@ install_marzban() {
   bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
   marzban cli admin create --sudo
 
-  cat <<'EOF' >> /path/to/file
+  cat <<'EOF' >> /opt/marzban/.env
 UVICORN_SSL_CERTFILE = "/var/lib/marzban/certs/$DOMAIN.cer"
 UVICORN_SSL_KEYFILE = "/var/lib/marzban/certs/$DOMAIN.cer.key"
 XRAY_SUBSCRIPTION_URL_PREFIX = "https://$DOMAIN"
