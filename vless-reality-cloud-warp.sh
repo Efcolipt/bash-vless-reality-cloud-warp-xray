@@ -340,7 +340,13 @@ set -euo pipefail
 
 KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
+
 mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
+
+if [[ ${#emails[@]} -eq 0 ]]; then
+  echo "Нет клиентов для удаления."
+  exit 1
+fi
 
 for i in "${!emails[@]}"; do
   echo "$((i + 1)). ${emails[$i]}"
