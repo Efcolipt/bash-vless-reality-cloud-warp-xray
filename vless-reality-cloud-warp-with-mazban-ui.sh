@@ -267,7 +267,7 @@ install_marzban() {
     --key-file "/var/lib/marzban/certs/$DOMAIN.cer.key"
   
 
-  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
   marzban cli admin create --sudo
 
   cat <<'EOF' >> /opt/marzban/.env
