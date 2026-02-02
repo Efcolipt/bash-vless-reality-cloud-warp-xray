@@ -8,10 +8,10 @@ ERROR="[ERROR]"
 # yahoo 100
 # www cloud 400
 # vl 
-# github.com
+# github.com 400
 
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
-MASK_DOMAIN="github.com"
+MASK_DOMAIN="vu.nl"
 
 export XRAY_PATH_CONFIG
 
