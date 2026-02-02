@@ -13,8 +13,6 @@ ERROR="[ERROR]"
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="yahoo.com"
 
-export XRAY_PATH_CONFIG
-
 # --- helpers ---------------------------------------------------------------
 
 die() { echo "$ERROR $*" >&2; exit 1; }
@@ -270,23 +268,24 @@ if [[ -z "$email" || "$email" == *" "* ]]; then
   exit 1
 fi
 
-user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$XRAY_PATH_CONFIG" || true)"
+PATH_CONFIG="$XRAY_PATH_CONFIG"
+user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$PATH_CONFIG" || true)"
 
 if [[ -z "$user_json" ]]; then
   uuid="$(xray uuid)"
   jq --arg email "$email" --arg uuid "$uuid" \
      '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
-     "$XRAY_PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$XRAY_PATH_CONFIG"
+     "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
 
   systemctl restart xray
 
-  index="$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$XRAY_PATH_CONFIG")"
-  protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
-  uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$XRAY_PATH_CONFIG")"
+  index="$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
+  protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
+  uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
   pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
   sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$XRAY_PATH_CONFIG")"
-  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
+  username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
+  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
   ip="$(hostname -I | awk '{print $1}')"
 
   link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
@@ -304,7 +303,8 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$XRAY_PATH_CONFIG")
+PATH_CONFIG="$XRAY_PATH_CONFIG"
+mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
 
 if [[ ${#emails[@]} -eq 0 ]]; then
   echo "Нет клиентов для удаления."
@@ -327,7 +327,7 @@ selected_email="${emails[$((choice - 1))]}"
 
 jq --arg email "$selected_email" \
   '(.inbounds[0].settings.clients) |= map(select(.email != $email))' \
-  "$XRAY_PATH_CONFIG" > /tmp/xray.tmp && mv /tmp/xray.tmp "$XRAY_PATH_CONFIG"
+  "$PATH_CONFIG" > /tmp/xray.tmp && mv /tmp/xray.tmp "$PATH_CONFIG"
 
 systemctl restart xray
 
@@ -340,11 +340,12 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
+PATH_CONFIG="$XRAY_PATH_CONFIG"
+protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
 uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
 pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
 sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
+sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(hostname -I | awk '{print $1}')"
 
 link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
@@ -359,7 +360,8 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$XRAY_PATH_CONFIG")
+PATH_CONFIG="$XRAY_PATH_CONFIG"
+mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
 
 for i in "${!emails[@]}"; do
   echo "$((i + 1)). ${emails[$i]}"
@@ -374,13 +376,13 @@ fi
 
 selected_email="${emails[$((client - 1))]}"
 
-index="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$XRAY_PATH_CONFIG")"
-protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
-uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$XRAY_PATH_CONFIG")"
+index="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
+protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
+uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
 pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
 sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$XRAY_PATH_CONFIG")"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
+username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
+sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(curl -4 -fsS icanhazip.com || hostname -I | awk '{print $1}')"
 
 link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
@@ -437,16 +439,6 @@ main() {
     xraynewuser - создает нового пользователя
     xrayrmuser - удаление пользователей
     xraysharelink - выводит список пользователей и позволяет создать для них ссылки для подключения
-
-
-Файл конфигурации находится по адресу:
-
-    $XRAY_PATH_CONFIG
-
-Команда для перезагрузки ядра Xray:
-
-    systemctl restart xray
-
 EOF
 }
 
