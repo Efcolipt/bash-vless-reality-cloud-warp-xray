@@ -46,7 +46,7 @@ net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 EOF
 
-  sysctl -p
+  sysctl --system
 }
 
 
@@ -212,14 +212,13 @@ jq --arg email "$email" --arg uuid "$uuid" '.inbounds[0].settings.clients += [{"
 systemctl restart xray
 index=$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  $XRAY_PATH_CONFIG)
 protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
-port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG)
 uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' $XRAY_PATH_CONFIG)
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
 username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' $XRAY_PATH_CONFIG)
 sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(hostname -I | awk '{print $1}')
-link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
+link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
 echo ""
 echo "Ссылка для подключения":
 echo "$link"
@@ -270,13 +269,13 @@ touch /usr/local/bin/xraymainuser
 cat << 'EOF' > /usr/local/bin/xraymainuser
 #!/bin/bash
 protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
-port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG)
+echo "$protocol"
 uuid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/uuid/ {print $2}')
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
 sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(hostname -I | awk '{print $1}')
-link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
+link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
 echo ""
 echo "Ссылка для подключения":
 echo "$link"
@@ -305,14 +304,13 @@ selected_email="${emails[$((client - 1))]}"
 
 index=$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  $XRAY_PATH_CONFIG)
 protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
-port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG) 
 uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' $XRAY_PATH_CONFIG)
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
 username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' $XRAY_PATH_CONFIG)
 sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(curl -4 -s icanhazip.com)
-link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
+link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
 echo ""
 echo "Ссылка для подключения":
 echo "$link"
