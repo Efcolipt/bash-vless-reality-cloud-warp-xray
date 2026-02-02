@@ -20,7 +20,7 @@ net.core.wmem_max = 67108864
 net.core.netdev_max_backlog = 10000
 net.core.somaxconn = 4096
 
-net.ipv4.ip_forward=1
+net.ipv4.ip_forward = 1
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_tw_reuse = 1
 net.ipv4.tcp_fin_timeout = 30
@@ -46,7 +46,7 @@ net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 EOF
 
-  sysctl --system >/dev/null 2>&1 || true
+  sysctl -p
 }
 
 
@@ -189,6 +189,8 @@ set_protocols_forwarding() {
 
   iptables -t nat -A PREROUTING -i $face -p udp --dport 443 -j DNAT --to-destination $ip:443
   iptables -t nat -A PREROUTING -i $face -p tcp --dport 80 -j DNAT --to-destination $ip:80
+
+  systemctl restart iptables
 }
 
 add_commands() {
@@ -369,5 +371,3 @@ cat << 'EOF' > $HOME/help
     systemctl restart xray
 
 EOF
-
-systemctl reboot
