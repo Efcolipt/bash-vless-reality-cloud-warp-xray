@@ -6,12 +6,10 @@ WARN="[WARN]"
 ERROR="[ERROR]"
 
 # yahoo 100
-# www cloud 400
 # vl 150
-# github.com 400
 
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
-MASK_DOMAIN="www.cloudflare.com"
+MASK_DOMAIN="www.samsung.com"
 
 # --- helpers ---------------------------------------------------------------
 
