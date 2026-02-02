@@ -159,6 +159,16 @@ set_xray_config() {
         }
       },
       "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
+    },
+    {
+      "tag": "Shadowsocks TCP",
+      "listen": "0.0.0.0",
+      "port": 1080,
+      "protocol": "shadowsocks",
+      "settings": {
+        "clients": [],
+        "network": "tcp,udp"
+      }
     }
   ],
 
@@ -215,19 +225,19 @@ EOF
 
 # --- forwarding ------------------------------------------------------------
 
-set_protocols_forwarding() {
-  log "Set protocols forwarding"
+# set_protocols_forwarding() {
+#   log "Set protocols forwarding"
 
-  local ip face
-  ip="$(resolve_ipv4 "$MASK_DOMAIN")"
-  face="$(default_iface)"
+#   local ip face
+#   ip="$(resolve_ipv4 "$MASK_DOMAIN")"
+#   face="$(default_iface)"
 
-  iptables_add_once nat PREROUTING -i "$face" -p udp --dport 443 -j DNAT --to "$ip:443"
-  iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
+#   iptables_add_once nat PREROUTING -i "$face" -p udp --dport 443 -j DNAT --to "$ip:443"
+#   iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
 
-  netfilter-persistent save || true
-  restart_firewall_service_if_any
-}
+#   netfilter-persistent save || true
+#   restart_firewall_service_if_any
+# }
 
 install_xray() {
   log "Installing Xray"
@@ -241,56 +251,33 @@ install_xray() {
   } > "$keys_file"
 }
 
-# --- marzban ---------------------------------------------------------------
-
-MARZBAN_DIR="/opt/marzban"
-MARZBAN_PANEL="http://127.0.0.1:8000"
-MARZBAN_ADMIN="admin"
-MARZBAN_PASS="changeme"
+export DOMAIN=$(hostname -I | awk '{print $1}')
 
 install_marzban() {
   log "Installing Marzban"
 
-  apt install -y docker.io docker-compose
-  systemctl enable --now docker
 
-  mkdir -p "$MARZBAN_DIR"
-  cd "$MARZBAN_DIR"
+  curl https://get.acme.sh | sh -s email=your@mail.com
 
-  curl -fsSL https://raw.githubusercontent.com/Gozargah/Marzban/master/docker-compose.yml \
-    -o docker-compose.yml
+  mkdir -p /var/lib/marzban/certs
 
-  cat > .env <<EOF
-XRAY_API_HOST=127.0.0.1
-XRAY_API_PORT=10085
-JWT_SECRET=$(openssl rand -hex 32)
-ADMIN_USERNAME=$MARZBAN_ADMIN
-ADMIN_PASSWORD=$MARZBAN_PASS
+  bash -c .acme.sh/acme.sh \
+    --issue --force --standalone -d "$DOMAIN" \
+    --fullchain-file "/var/lib/marzban/certs/$DOMAIN.cer" \
+    --key-file "/var/lib/marzban/certs/$DOMAIN.cer.key"
+  
+
+  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  marzban cli admin create --sudo
+
+  cat <<'EOF' >> /path/to/file
+UVICORN_SSL_CERTFILE = "/var/lib/marzban/certs/$DOMAIN.cer"
+UVICORN_SSL_KEYFILE = "/var/lib/marzban/certs/$DOMAIN.cer.key"
+XRAY_SUBSCRIPTION_URL_PREFIX = "https://$DOMAIN"
 EOF
 
-  docker compose up -d
-}
 
-marzban_login() {
-  sleep 8
-  TOKEN=$(curl -s "$MARZBAN_PANEL/api/admin/token" \
-    -X POST -H "Content-Type: application/json" \
-    -d "{\"username\":\"$MARZBAN_ADMIN\",\"password\":\"$MARZBAN_PASS\"}" \
-    | jq -r .access_token)
-}
-
-marzban_add_user() {
-  curl -s "$MARZBAN_PANEL/api/users" \
-    -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "username": "user1",
-      "proxies": {
-        "vless": { "flow": "xtls-rprx-vision" }
-      },
-      "data_limit": 0
-    }' | jq
+marzban restart
 }
 
 # --- main ------------------------------------------------------------------
@@ -299,18 +286,16 @@ main() {
   require_root
 
   apt update
-  apt install -y dnsutils iptables iptables-persistent curl jq openssl
+  apt install -y dnsutils iptables socat iptables-persistent curl jq openssl
 
   install_xray
   set_xray_config
   apply_sysctl
-  set_protocols_forwarding
+#   set_protocols_forwarding
 
   systemctl restart xray
 
   install_marzban
-  marzban_login
-  marzban_add_user
 
   log "DONE"
 }
