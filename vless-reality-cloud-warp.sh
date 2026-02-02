@@ -7,6 +7,7 @@ ERROR="[ERROR]"
 
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="yahoo.com"
+KEYS_FILE="/usr/local/etc/xray/.keys"
 
 # --- helpers ---------------------------------------------------------------
 
@@ -50,8 +51,6 @@ iptables_add_once() {
   iptables -t "$table" -C "$chain" "$@" 2>/dev/null || iptables -t "$table" -A "$chain" "$@"
 }
 
-# --- sysctl ----------------------------------------------------------------
-
 apply_sysctl() {
   log "Applying sysctl"
 
@@ -90,16 +89,13 @@ EOF
   sysctl --system >/dev/null
 }
 
-# --- xray config ------------------------------------------------------------
-
 set_xray_config() {
-  local keys_file="/usr/local/etc/xray/.keys"
-  [[ -f "$keys_file" ]] || die "Keys file not found: $keys_file"
+  [[ -f "$KEYS_FILE" ]] || die "Keys file not found: $KEYS_FILE"
 
   local UUID XRAY_PRIV XRAY_SHORT_IDS
-  UUID="$(awk -F': ' '/uuid/ {print $2; exit}' "$keys_file")"
-  XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$keys_file")"
-  XRAY_SHORT_IDS="$(awk -F': ' '/shortsid/ {print $2; exit}' "$keys_file")"
+  UUID="$(awk -F': ' '/uuid/ {print $2; exit}' "$KEYS_FILE")"
+  XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$KEYS_FILE")"
+  XRAY_SHORT_IDS="$(awk -F': ' '/shortsid/ {print $2; exit}' "$KEYS_FILE")"
 
   [[ -n "$UUID" && -n "$XRAY_PRIV" && -n "$XRAY_SHORT_IDS" ]] || die "Failed to read uuid/x25519/shortsid"
 
@@ -205,8 +201,6 @@ set_xray_config() {
 EOF
 }
 
-# --- forwarding / iptables --------------------------------------------------
-
 set_protocols_forwarding() {
   log "Set protocols forwarding"
 
@@ -242,9 +236,8 @@ install_xray() {
   log "Installing Xray"
   bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
-  local keys_file="/usr/local/etc/xray/.keys"
-  rm -f "$keys_file"
-  install -m 0600 /dev/null "$keys_file"
+  rm -f "$KEYS_FILE"
+  install -m 0600 /dev/null "$KEYS_FILE"
 
   {
     echo "shortsid: $(openssl rand -hex 8)"
@@ -270,6 +263,7 @@ if [[ -z "$email" || "$email" == *" "* ]]; then
   exit 1
 fi
 
+KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
 user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$PATH_CONFIG" || true)"
 
@@ -284,8 +278,8 @@ if [[ -z "$user_json" ]]; then
   index="$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
   protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
   uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-  pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+  pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
   username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
   sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
   ip="$(hostname -I | awk '{print $1}')"
@@ -342,11 +336,12 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
+KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
 protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+uuid="$(awk -F': ' '/uuid/ {print $2; exit}' $KEYS_FILE)"
+pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
 sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(hostname -I | awk '{print $1}')"
 
@@ -362,6 +357,7 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
+KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
 mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
 
@@ -381,8 +377,8 @@ selected_email="${emails[$((client - 1))]}"
 index="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
 protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
 uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
 username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
 sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(curl -4 -fsS icanhazip.com || hostname -I | awk '{print $1}')"
@@ -407,9 +403,9 @@ main() {
   add_commands
 
   protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
-  uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+  uuid="$(awk -F': ' '/uuid/ {print $2; exit}' $KEYS_FILE)"
+  pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
   sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
   ip="$(hostname -I | awk '{print $1}')"
 
