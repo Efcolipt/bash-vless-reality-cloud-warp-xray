@@ -242,9 +242,9 @@ install_xray() {
   {
     echo "shortsid: $(openssl rand -hex 8)"
     echo "uuid: $(xray uuid)"
-  } >> "$keys_file"
+  } >> "$KEYS_FILE"
 
-  xray x25519 >> "$keys_file"
+  xray x25519 >> "$KEYS_FILE"
 }
 
 
