@@ -250,12 +250,12 @@ add_commands() {
 set -euo pipefail
 
 UUID="$(xray uuid)"
-XRAY_SID="$(openssl rand -hex 8)"
-XRAY_EMAIL="$(openssl rand -hex 12)"
+SID="$(openssl rand -hex 8)"
+EMAIL="$(openssl rand -hex 12)"
 KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
 
-jq --arg email "$XRAY_EMAIL" --arg uuid "$UUID" --arg sid "$XRAY_SID" \
+jq --arg email "$EMAIL" --arg uuid "$UUID" --arg sid "$SID" \
     '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
     '.inbounds[0].streamSettings.realitySettings.shortIds += ["$sid"]' \
     "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
@@ -267,7 +267,7 @@ PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 IP="$(hostname -I | awk '{print $1}')"
 
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$XRAY_SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$UUID"
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
 EOF
 
   # xrayrmuser
@@ -315,14 +315,14 @@ set -euo pipefail
 
 KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
-protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-uuid="$(awk -F': ' '/uuid/ {print $2; exit}' $KEYS_FILE)"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
+PROTOCOL="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
+UUID="$(jq -r '.inbounds[0].settings.clients[0].id' "$PATH_CONFIG")"
+PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+SID="$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' "$PATH_CONFIG")"
+SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(hostname -I | awk '{print $1}')"
 
-echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
 EOF
 
   # xraysharelink
@@ -348,16 +348,16 @@ fi
 
 selected_email="${emails[$((client - 1))]}"
 
-index="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
-protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
-username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-ip="$(curl -4 -fsS icanhazip.com || hostname -I | awk '{print $1}')"
+INDEX="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
+PROTOCOL="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
+UUID="$(jq --argjson index "$INDEX" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
+PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+SID="$(jq --argjson index "$INDEX" -r '.inbounds[0].streamSettings.realitySettings.shortIds[$index]' "$PATH_CONFIG")"
+EMAIL="$(jq --argjson index "$INDEX" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
+SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
+IP="$(hostname -I | awk '{print $1}')"
 
-echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
 EOF
 }
 
