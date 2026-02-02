@@ -150,6 +150,7 @@ set_xray_config() {
       "protocol": "vless",
       "tag": "reality-in",
       "settings": {
+        "decryption": "none",
         "clients": [
           {"id": "$UUID", "email": "main", "flow": "xtls-rprx-vision"}
         ]
