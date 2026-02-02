@@ -320,7 +320,7 @@ UUID="$(jq -r '.inbounds[0].settings.clients[0].id' "$PATH_CONFIG")"
 PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
 SID="$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' "$PATH_CONFIG")"
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-ip="$(hostname -I | awk '{print $1}')"
+IP="$(hostname -I | awk '{print $1}')"
 
 echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
 EOF
