@@ -180,10 +180,10 @@ set_xray_config() {
 EOF
 }
 
-set_protocols_forwarding() {
-  local ip=$(timeout 3 curl -4 -s $MASK_DOMAIN)
+set_protocols_forwarding() {  
+  local ip=$(dig +short $MASK_DOMAIN)
   local face="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
-  echo "$ip "
+  echo "$ip"
   echo ""
   echo "$face"
 
@@ -332,7 +332,7 @@ install_xray() {
 
 main() {
   apt update && apt upgrade
-  apt install curl fail2ban jq openssl -y
+  apt install -y dnsutils iptables iptables-persistent curl fail2ban jq openssl 
 
   install_xray
   set_xray_config
