@@ -81,9 +81,18 @@ set_xray_config() {
  cat >"$XRAY_PATH_CONFIG" <<EOF
 {
   "log": {"loglevel": "info"},
+  "dns": {
+    "servers": [
+      "https+local://8.8.4.4/dns-query",
+      "https+local://8.8.8.8/dns-query",
+      "https+local://1.1.1.1/dns-query",
+      "localhost"
+    ],
+    "queryStrategy": "UseIPv4"
+  },
   "inbounds": [
     {
-      "listen": "0.0.0.0",
+      "listen": "$(hostname -I | awk '{print $1}')",
       "port": 443,
       "protocol": "vless",
       "tag": "reality-in",
@@ -154,6 +163,9 @@ set_xray_config() {
         "outboundTag": "warp"
       }
     ]
+  },
+  "policy": {
+    "levels": { "0": {"handshake": 3, "connIdle": 180} }
   }
 }
 EOF
@@ -317,6 +329,7 @@ main() {
   apply_sysctl
   set_protocols_forwarding
   add_commands
+
   systemctl restart xray
 }
 
