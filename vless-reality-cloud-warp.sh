@@ -80,7 +80,7 @@ set_xray_config() {
 
  cat >"$XRAY_PATH_CONFIG" <<EOF
 {
-  "log": { "loglevel": "info" },
+  "log": {"loglevel": "info"},
   "dns": {
     "servers": [
       "https+local://8.8.4.4/dns-query",
@@ -90,47 +90,49 @@ set_xray_config() {
     ],
     "queryStrategy": "UseIPv4"
   },
-  "inbounds": [{
-    "listen": "0.0.0.0",
-    "port": 443,
-    "protocol": "vless",
-    "tag": "reality-in",
-    "settings": {
-      "clients": [{
-        "id": "$UUID",
-        "email": "main",
-        "flow": "xtls-rprx-vision"
-      }],
-    },
-    "streamSettings": {
-      "network": "tcp",
-      "security": "reality",
-      "realitySettings": {
-        "show": false,
-        "dest": "$MASK_DOMAIN:443",
-        "serverNames": ["$MASK_DOMAIN"],
-        "privateKey": "$XRAY_PRIV",
-        "minClientVer": "",
-        "maxClientVer": "",
-        "maxTimeDiff": 0,
-        "shortIds": ["$XRAY_SHORT_IDS"]
-      }
-    },
-    "sniffing": { "enabled": true, "destOverride": ["http","tls","quic"] }
-  }],
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "tag": "reality-in",
+      "settings": {
+        "clients": [
+          {"id": "$UUID", "email": "main", "flow": "xtls-rprx-vision"}
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "$MASK_DOMAIN:443",
+          "serverNames": ["$MASK_DOMAIN"],
+          "privateKey": "$XRAY_PRIV",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 0,
+          "shortIds": ["$XRAY_SHORT_IDS"]
+        }
+      },
+      "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
+    }
+  ],
   "outbounds": [
-    { "protocol": "freedom", "tag": "direct" },
-    { "protocol": "blackhole", "tag": "block" },
+    {"protocol": "freedom", "tag": "direct"},
+    {"protocol": "blackhole", "tag": "block"},
     {
       "protocol": "wireguard",
       "tag": "warp",
       "settings": {
         "secretKey": "$WARP_PRIV",
         "address": ["172.16.0.2/32", "$WARP_V6/128"],
-        "peers": [{
-          "endpoint": "engage.cloudflareclient.com:2408",
-          "publicKey": "$WARP_PUB"
-        }],
+        "peers": [
+          {
+            "endpoint" : "engage.cloudflareclient.com:2408",
+            "publicKey": "$WARP_PUB"
+          }
+        ],
         "mtu": 1280,
         "reserved": "$WARP_RESERVED",
         "workers": 2,
@@ -141,42 +143,30 @@ set_xray_config() {
   "routing": {
     "domainStrategy": "IPIfNonMatch",
     "rules": [
+      {"type": "field", "protocol": "bittorrent", "outboundTag": "block"},
       {
-        "type": "field",
-        "protocol": "bittorrent",
+        "domain": ["geosite:category-ads-all", "geosite:win-spy"],
         "outboundTag": "block"
-      },
-      { "domain": [
-         "geosite:category-ads-all",
-         "geosite:win-spy",
-        ], 
-        "outboundTag": "block" 
       },
       {
         "type": "field",
         "domain": [
-          "geosite:openai", 
-          "geosite:category-ru",
-          "geosite:private",
-
-          "domain:ru", 
-          "domain:su", 
-          "domain:by", 
+          "geosite:openai",      "geosite:category-ru", "geosite:private",
+          "domain:ru",           "domain:su",           "domain:by",
           "domain:xn--p1ai"
         ],
         "outboundTag": "warp"
       },
-      { "type": "field", "ip": ["geoip:ru", "geoip:private"], "outboundTag": "warp" }
+      {
+        "type": "field",
+        "ip": ["geoip:ru", "geoip:private"],
+        "outboundTag": "warp"
+      }
     ]
   },
-      "policy": {
-        "levels": {
-            "0": {
-                "handshake": 3,
-                "connIdle": 180
-            }
-        }
-    }
+  "policy": {
+    "levels": { "0": {"handshake": 3, "connIdle": 180} }
+  }
 }
 EOF
 }
