@@ -251,11 +251,10 @@ install_xray() {
   } > "$keys_file"
 }
 
-export DOMAIN=$(hostname -I | awk '{print $1}')
+export DOMAIN=$(hostname)
 
 install_marzban() {
   log "Installing Marzban"
-
 
   curl https://get.acme.sh | sh -s email=your@mail.com
 
@@ -270,12 +269,11 @@ install_marzban() {
   bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
   marzban cli admin create --sudo
 
-  cat <<'EOF' >> /opt/marzban/.env
-UVICORN_SSL_CERTFILE = "/var/lib/marzban/certs/$DOMAIN.cer"
-UVICORN_SSL_KEYFILE = "/var/lib/marzban/certs/$DOMAIN.cer.key"
-XRAY_SUBSCRIPTION_URL_PREFIX = "https://$DOMAIN"
+  cat <<EOF >> /opt/marzban/.env
+UVICORN_SSL_CERTFILE=/var/lib/marzban/certs/$DOMAIN.cer
+UVICORN_SSL_KEYFILE=/var/lib/marzban/certs/$DOMAIN.cer.key
+XRAY_SUBSCRIPTION_URL_PREFIX=https://$DOMAIN
 EOF
-
 
 marzban restart
 }
