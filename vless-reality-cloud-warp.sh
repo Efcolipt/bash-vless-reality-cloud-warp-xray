@@ -133,9 +133,6 @@ set_xray_config() {
           "dest": "$MASK_DOMAIN:443",
           "serverNames": ["$MASK_DOMAIN"],
           "privateKey": "$XRAY_PRIV",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 0,
           "shortIds": []
         }
       },
