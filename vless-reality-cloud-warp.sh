@@ -92,11 +92,7 @@ EOF
 set_xray_config() {
   [[ -f "$KEYS_FILE" ]] || die "Keys file not found: $KEYS_FILE"
 
-  local UUID XRAY_PRIV XRAY_SHORT_IDS
-  UUID="$(xray uuid)"
   XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$KEYS_FILE")"
-  XRAY_SHORT_ID="$(openssl rand -hex 8)"
-  XRAY_EMAIL="$(openssl rand -hex 12)"
 
   log "Registering WARP"
   local WARP_INFO
@@ -127,9 +123,7 @@ set_xray_config() {
       "settings": {
         "decryption": "none",
         "encryption": "none",
-        "clients": [
-          {"id": "$UUID", "email": "$XRAY_EMAIL", "flow": "xtls-rprx-vision"}
-        ]
+        "clients": []
       },
       "streamSettings": {
         "network": "tcp",
@@ -313,25 +307,6 @@ systemctl restart xray
 echo "Клиент $selected_email удалён."
 EOF
 
-  # xraymainuser
-  install -m 0755 /dev/null /usr/local/bin/xraymainuser
-  cat <<'EOF' > /usr/local/bin/xraymainuser
-#!/usr/bin/env bash
-set -euo pipefail
-
-KEYS_FILE="/usr/local/etc/xray/.keys"
-PATH_CONFIG="/usr/local/etc/xray/config.json"
-PROTOCOL="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-UUID="$(jq -r '.inbounds[0].settings.clients[0].id' "$PATH_CONFIG")"
-EMAIL="$(jq -r '.inbounds[0].settings.clients[0].email' "$PATH_CONFIG")"
-PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
-SID="$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' "$PATH_CONFIG")"
-SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-IP="$(hostname -I | awk '{print $1}')"
-
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
-EOF
-
   # xraysharelink
   install -m 0755 /dev/null /usr/local/bin/xraysharelink
   cat <<'EOF' > /usr/local/bin/xraysharelink
@@ -388,12 +363,9 @@ main() {
 
   systemctl restart xray
 
-  /usr/local/bin/xraymainuser || true
-
   echo "
     Команды для управления пользователями Xray:
 
-        xraymainuser - выводит ссылку для подключения основного пользователя
         xraynewuser - создает нового пользователя
         xrayrmuser - удаление пользователей
         xraysharelink - выводит список пользователей и позволяет создать для них ссылки для подключения
