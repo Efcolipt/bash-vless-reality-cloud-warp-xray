@@ -130,14 +130,7 @@ set_xray_config() {
 {
   "log": {"loglevel": "info"},
   "dns": {
-    "servers": [
-      {
-        "address": "1.1.1.1",
-        "port": 53,
-        "network": "udp",
-        "outboundTag": "warp"
-      }
-    ],
+    "servers": ["system"],
     "queryStrategy": "UseIPv4"
   },
   "inbounds": [
