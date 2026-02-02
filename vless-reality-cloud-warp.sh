@@ -5,8 +5,13 @@ INFO="[INFO]"
 WARN="[WARN]"
 ERROR="[ERROR]"
 
+# yahoo 100
+# www cloud 400
+# vl 
+# github.com
+
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
-MASK_DOMAIN="yahoo.com"
+MASK_DOMAIN="github.com"
 
 export XRAY_PATH_CONFIG
 
