@@ -141,6 +141,7 @@ set_xray_config() {
       "tag": "reality-in",
       "settings": {
         "decryption": "none",
+        "encryption": "none",
         "clients": [
           {"id": "$UUID", "email": "main", "flow": "xtls-rprx-vision"}
         ]
@@ -174,6 +175,10 @@ set_xray_config() {
         "peers": [
           {
             "endpoint" : "engage.cloudflareclient.com:2408",
+            "allowedIPs": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
             "publicKey": "$WARP_PUB"
           }
         ],
@@ -245,148 +250,6 @@ set_protocols_forwarding() {
   restart_firewall_service_if_any
 }
 
-# --- command helpers --------------------------------------------------------
-
-add_commands() {
-  # xraynewuser
-  install -m 0755 /dev/null /usr/local/bin/xraynewuser
-  cat <<'EOF' > /usr/local/bin/xraynewuser
-#!/usr/bin/env bash
-set -euo pipefail
-
-read -r -p "Введите имя пользователя: " email
-
-if [[ -z "$email" || "$email" == *" "* ]]; then
-  echo "Имя пользователя не может быть пустым или содержать пробелы. Попробуйте снова."
-  exit 1
-fi
-
-PATH_CONFIG="/usr/local/etc/xray/config.json"
-user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$PATH_CONFIG" || true)"
-
-if [[ -z "$user_json" ]]; then
-  uuid="$(xray uuid)"
-  jq --arg email "$email" --arg uuid "$uuid" \
-     '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
-     "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
-
-  systemctl restart xray
-
-  index="$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
-  protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-  uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-  pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-  username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
-  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-  ip="$(hostname -I | awk '{print $1}')"
-
-  link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
-  echo ""
-  echo "Ссылка для подключения:"
-  echo "$link"
-else
-  echo "Пользователь с таким именем уже существует. Попробуйте снова."
-fi
-EOF
-
-  # xrayrmuser
-  install -m 0755 /dev/null /usr/local/bin/xrayrmuser
-  cat <<'EOF' > /usr/local/bin/xrayrmuser
-#!/usr/bin/env bash
-set -euo pipefail
-
-PATH_CONFIG="/usr/local/etc/xray/config.json"
-mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
-
-if [[ ${#emails[@]} -eq 0 ]]; then
-  echo "Нет клиентов для удаления."
-  exit 1
-fi
-
-echo "Список клиентов:"
-for i in "${!emails[@]}"; do
-  echo "$((i+1)). ${emails[$i]}"
-done
-
-read -r -p "Введите номер клиента для удаления: " choice
-
-if ! [[ "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#emails[@]} )); then
-  echo "Ошибка: номер должен быть от 1 до ${#emails[@]}"
-  exit 1
-fi
-
-selected_email="${emails[$((choice - 1))]}"
-
-jq --arg email "$selected_email" \
-  '(.inbounds[0].settings.clients) |= map(select(.email != $email))' \
-  "$PATH_CONFIG" > /tmp/xray.tmp && mv /tmp/xray.tmp "$PATH_CONFIG"
-
-systemctl restart xray
-
-echo "Клиент $selected_email удалён."
-EOF
-
-  # xraymainuser
-  install -m 0755 /dev/null /usr/local/bin/xraymainuser
-  cat <<'EOF' > /usr/local/bin/xraymainuser
-#!/usr/bin/env bash
-set -euo pipefail
-
-PATH_CONFIG="/usr/local/etc/xray/config.json"
-protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-ip="$(hostname -I | awk '{print $1}')"
-
-link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
-echo ""
-echo "Ссылка для подключения:"
-echo "$link"
-EOF
-
-  # xraysharelink
-  install -m 0755 /dev/null /usr/local/bin/xraysharelink
-  cat <<'EOF' > /usr/local/bin/xraysharelink
-#!/usr/bin/env bash
-set -euo pipefail
-
-PATH_CONFIG="/usr/local/etc/xray/config.json"
-mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
-
-for i in "${!emails[@]}"; do
-  echo "$((i + 1)). ${emails[$i]}"
-done
-
-read -r -p "Выберите клиента: " client
-
-if ! [[ "$client" =~ ^[0-9]+$ ]] || (( client < 1 || client > ${#emails[@]} )); then
-  echo "Ошибка: номер должен быть от 1 до ${#emails[@]}"
-  exit 1
-fi
-
-selected_email="${emails[$((client - 1))]}"
-
-index="$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
-protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
-username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
-sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-ip="$(curl -4 -fsS icanhazip.com || hostname -I | awk '{print $1}')"
-
-link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
-echo ""
-echo "Ссылка для подключения:"
-echo "$link"
-EOF
-}
-
-# --- install ----------------------------------------------------------------
-
 install_xray() {
   log "Installing Xray"
   bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
@@ -409,30 +272,23 @@ main() {
   require_root
 
   apt update
-  apt install -y dnsutils iptables iptables-persistent curl fail2ban jq openssl
+  apt install -y dnsutils iptables iptables-persistent curl jq openssl
 
   install_xray
   set_xray_config
   apply_sysctl
   set_protocols_forwarding "$MASK_DOMAIN"
-  add_commands
+
+  protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
+  uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+  pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
+  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
+  ip="$(hostname -I | awk '{print $1}')"
 
   systemctl restart xray
 
-  log "Xray-core успешно установлен"
-  /usr/local/bin/xraymainuser || true
-
-  # help file
-  install -m 0644 /dev/null "$HOME/help"
-  cat <<'EOF' > "$HOME/help"
-
-Команды для управления пользователями Xray:
-
-    xraymainuser - выводит ссылку для подключения основного пользователя
-    xraynewuser - создает нового пользователя
-    xrayrmuser - удаление пользователей
-    xraysharelink - выводит список пользователей и позволяет создать для них ссылки для подключения
-EOF
+  echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
 }
 
 main
