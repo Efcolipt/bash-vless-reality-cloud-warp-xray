@@ -136,7 +136,7 @@ set_xray_config() {
           "minClientVer": "",
           "maxClientVer": "",
           "maxTimeDiff": 0,
-          "shortIds": ["$XRAY_SHORT_ID"]
+          "shortIds": []
         }
       },
       "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
