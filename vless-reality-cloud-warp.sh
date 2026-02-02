@@ -111,16 +111,10 @@ set_xray_config() {
   WARP_INFO="$(bash -c "$(curl -fsSL warp-reg.vercel.app)")"
 
   local WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
-  WARP_PRIV="$(sed -nE 's/.*"private_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' <<<"$WARP_INFO")"
-  WARP_PUB="$(sed -nE 's/.*"public_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' <<<"$WARP_INFO")"
-
-  WARP_V6="$(
-    printf '%s\n' "$WARP_INFO" |
-    sed -E '/"endpoint"[[:space:]]*:/,/\}/d' |
-    sed -nE 's/.*"v6"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p'
-  )"
-
-  WARP_RESERVED="$(sed -nE 's/.*"reserved_str"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' <<<"$WARP_INFO")"
+  WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
+  WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
+  WARP_V6="$(jq -r '.v6' <<<"$WARP_INFO")"
+  WARP_RESERVED="$(jq -r '.reserved_str' <<<"$WARP_INFO")"
 
   [[ -n "$WARP_PRIV" && -n "$WARP_PUB" && -n "$WARP_V6" && -n "$WARP_RESERVED" ]] || die "Failed to parse warp-reg output"
 
