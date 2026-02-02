@@ -182,10 +182,10 @@ EOF
 }
 
 set_protocols_forwarding() {  
-  echo "Set protocols forwarding"
+  echo "$INFO Set protocols forwarding"
   local ip=$(dig +short A "$MASK_DOMAIN" | tail -n1)
   local face="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
-  echo "Mask domain IP:$ip FACE:$face"
+  echo "$INFO Mask domain IP:$ip FACE:$face"
 
   iptables -t nat -A PREROUTING -i $face -p udp --dport 443 -j DNAT --to-destination $ip:443
   iptables -t nat -A PREROUTING -i $face -p tcp --dport 80 -j DNAT --to-destination $ip:80
@@ -344,7 +344,7 @@ main() {
 main
 
 
-echo "Xray-core успешно установлен"
+echo "$INFO Xray-core успешно установлен"
 xraymainuser
 
 # Создаем файл с подсказками
