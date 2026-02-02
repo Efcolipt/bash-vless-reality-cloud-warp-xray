@@ -78,7 +78,7 @@ set_xray_config() {
       exit 1
     fi
 
- cat >"$$XRAY_PATH_CONFIG" <<EOF
+ cat >"$XRAY_PATH_CONFIG" <<EOF
 {
   "log": { "loglevel": "info" },
   "dns": {
@@ -208,7 +208,7 @@ user_json=$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.e
 
 if [[ -z "$user_json" ]]; then
 uuid=$(xray uuid)
-jq --arg email "$email" --arg uuid "$uuid" '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' $XRAY_PATH_CONFIG > tmp.json && mv tmp.json $$XRAY_PATH_CONFIG
+jq --arg email "$email" --arg uuid "$uuid" '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' $XRAY_PATH_CONFIG > tmp.json && mv tmp.json $XRAY_PATH_CONFIG
 systemctl restart xray
 index=$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  $XRAY_PATH_CONFIG)
 protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
