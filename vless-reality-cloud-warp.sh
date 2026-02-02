@@ -402,16 +402,18 @@ main() {
   set_protocols_forwarding "$MASK_DOMAIN"
   add_commands
 
-  protocol="$(jq -r '.inbounds[0].protocol' "$XRAY_PATH_CONFIG")"
-  uuid="$(awk -F': ' '/uuid/ {print $2; exit}' $KEYS_FILE)"
-  pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
-  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
-  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$XRAY_PATH_CONFIG")"
-  ip="$(hostname -I | awk '{print $1}')"
-
   systemctl restart xray
 
-  echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
+  /usr/local/bin/xraymainuser || true
+
+  echo "
+    Команды для управления пользователями Xray:
+
+        xraymainuser - выводит ссылку для подключения основного пользователя
+        xraynewuser - создает нового пользователя
+        xrayrmuser - удаление пользователей
+        xraysharelink - выводит список пользователей и позволяет создать для них ссылки для подключения
+  "
 }
 
 main
