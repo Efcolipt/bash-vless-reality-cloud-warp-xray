@@ -6,7 +6,7 @@ WARN="[WARN]"
 ERROR="[ERROR]"
 
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
-MASK_DOMAIN="images.apple.com"
+MASK_DOMAIN="cdnjs.cloudflare.com"
 
 export XRAY_PATH_CONFIG
 
