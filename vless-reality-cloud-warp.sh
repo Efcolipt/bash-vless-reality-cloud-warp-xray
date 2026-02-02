@@ -5,9 +5,10 @@ INFO="[INFO]"
 WARN="[WARN]"
 ERROR="[ERROR]"
 
-XRAY_CONFIG="/usr/local/etc/xray/config.json"
+XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="images.apple.com"
 
+export XRAY_PATH_CONFIG
 
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
 
@@ -77,7 +78,7 @@ set_xray_config() {
       exit 1
     fi
 
- cat >"$XRAY_CONFIG" <<EOF
+ cat >"$$XRAY_PATH_CONFIG" <<EOF
 {
   "log": { "loglevel": "info" },
   "dns": {
@@ -181,11 +182,10 @@ EOF
 }
 
 set_protocols_forwarding() {  
+  echo "Set protocols forwarding"
   local ip=$(dig +short A "$MASK_DOMAIN" | tail -n1)
   local face="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
-  echo "$ip"
-  echo ""
-  echo "$face"
+  echo "Mask domain IP:$ip FACE:$face"
 
   iptables -t nat -A PREROUTING -i $face -p udp --dport 443 -j DNAT --to-destination $ip:443
   iptables -t nat -A PREROUTING -i $face -p tcp --dport 80 -j DNAT --to-destination $ip:80
@@ -202,20 +202,20 @@ read -p "Введите имя пользователя: " email
     echo "Имя пользователя не может быть пустым или содержать пробелы. Попробуйте снова."
     exit 1
     fi
-user_json=$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' /usr/local/etc/xray/config.json)
+user_json=$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' $XRAY_PATH_CONFIG)
 
 if [[ -z "$user_json" ]]; then
 uuid=$(xray uuid)
-jq --arg email "$email" --arg uuid "$uuid" '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' /usr/local/etc/xray/config.json > tmp.json && mv tmp.json /usr/local/etc/xray/config.json
+jq --arg email "$email" --arg uuid "$uuid" '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' $XRAY_PATH_CONFIG > tmp.json && mv tmp.json $$XRAY_PATH_CONFIG
 systemctl restart xray
-index=$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  /usr/local/etc/xray/config.json)
-protocol=$(jq -r '.inbounds[0].protocol' /usr/local/etc/xray/config.json)
-port=$(jq -r '.inbounds[0].port' /usr/local/etc/xray/config.json)
-uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' /usr/local/etc/xray/config.json)
+index=$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  $XRAY_PATH_CONFIG)
+protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
+port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG)
+uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' $XRAY_PATH_CONFIG)
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
-username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' /usr/local/etc/xray/config.json)
-sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' /usr/local/etc/xray/config.json)
+username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' $XRAY_PATH_CONFIG)
+sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(hostname -I | awk '{print $1}')
 link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
 echo ""
@@ -232,7 +232,7 @@ chmod +x /usr/local/bin/xraynewuser
 touch /usr/local/bin/xrayrmuser
 cat << 'EOF' > /usr/local/bin/xrayrmuser
 #!/bin/bash
-emails=($(jq -r '.inbounds[0].settings.clients[].email' "/usr/local/etc/xray/config.json"))
+emails=($(jq -r '.inbounds[0].settings.clients[].email' "$XRAY_PATH_CONFIG"))
 
 if [[ ${#emails[@]} -eq 0 ]]; then
     echo "Нет клиентов для удаления."
@@ -255,7 +255,7 @@ selected_email="${emails[$((choice - 1))]}"
 
 jq --arg email "$selected_email" \
    '(.inbounds[0].settings.clients) |= map(select(.email != $email))' \
-   "/usr/local/etc/xray/config.json" > tmp && mv tmp "/usr/local/etc/xray/config.json"
+   "$XRAY_PATH_CONFIG" > tmp && mv tmp "$XRAY_PATH_CONFIG"
 
 systemctl restart xray
 
@@ -267,12 +267,12 @@ chmod +x /usr/local/bin/xrayrmuser
 touch /usr/local/bin/xraymainuser
 cat << 'EOF' > /usr/local/bin/xraymainuser
 #!/bin/bash
-protocol=$(jq -r '.inbounds[0].protocol' /usr/local/etc/xray/config.json)
-port=$(jq -r '.inbounds[0].port' /usr/local/etc/xray/config.json)
+protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
+port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG)
 uuid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/uuid/ {print $2}')
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
-sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' /usr/local/etc/xray/config.json)
+sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(hostname -I | awk '{print $1}')
 link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
 echo ""
@@ -285,7 +285,7 @@ chmod +x /usr/local/bin/xraymainuser
 touch /usr/local/bin/xraysharelink
 cat << 'EOF' > /usr/local/bin/xraysharelink
 #!/bin/bash
-emails=($(jq -r '.inbounds[0].settings.clients[].email' /usr/local/etc/xray/config.json))
+emails=($(jq -r '.inbounds[0].settings.clients[].email' $XRAY_PATH_CONFIG))
 
 for i in "${!emails[@]}"; do
    echo "$((i + 1)). ${emails[$i]}"
@@ -301,14 +301,14 @@ fi
 selected_email="${emails[$((client - 1))]}"
 
 
-index=$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  /usr/local/etc/xray/config.json)
-protocol=$(jq -r '.inbounds[0].protocol' /usr/local/etc/xray/config.json)
-port=$(jq -r '.inbounds[0].port' /usr/local/etc/xray/config.json) 
-uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' /usr/local/etc/xray/config.json)
+index=$(jq --arg email "$selected_email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key'  $XRAY_PATH_CONFIG)
+protocol=$(jq -r '.inbounds[0].protocol' $XRAY_PATH_CONFIG)
+port=$(jq -r '.inbounds[0].port' $XRAY_PATH_CONFIG) 
+uuid=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' $XRAY_PATH_CONFIG)
 pbk=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/Password/ {print $2}')
 sid=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
-username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' /usr/local/etc/xray/config.json)
-sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' /usr/local/etc/xray/config.json)
+username=$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' $XRAY_PATH_CONFIG)
+sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' $XRAY_PATH_CONFIG)
 ip=$(curl -4 -s icanhazip.com)
 link="$protocol://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
 echo ""
@@ -362,7 +362,7 @@ cat << 'EOF' > $HOME/help
 
 Файл конфигурации находится по адресу:
 
-    /usr/local/etc/xray/config.json
+    $XRAY_PATH_CONFIG
 
 Команда для перезагрузки ядра Xray:
 
