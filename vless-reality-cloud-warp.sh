@@ -93,14 +93,12 @@ set_xray_config() {
   [[ -f "$KEYS_FILE" ]] || die "Keys file not found: $KEYS_FILE"
 
   local UUID XRAY_PRIV XRAY_SHORT_IDS
-  UUID="$(awk -F': ' '/uuid/ {print $2; exit}' "$KEYS_FILE")"
+  UUID="$(xray uuid)"
   XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$KEYS_FILE")"
-  XRAY_SHORT_IDS="$(awk -F': ' '/shortsid/ {print $2; exit}' "$KEYS_FILE")"
-
-  [[ -n "$UUID" && -n "$XRAY_PRIV" && -n "$XRAY_SHORT_IDS" ]] || die "Failed to read uuid/x25519/shortsid"
+  XRAY_SHORT_ID="$(openssl rand -hex 8)"
+  XRAY_EMAIL="$(openssl rand -hex 12)"
 
   log "Registering WARP"
-  # Keep as-is, but make curl safer
   local WARP_INFO
   WARP_INFO="$(bash -c "$(curl -fsSL warp-reg.vercel.app)")"
 
@@ -130,7 +128,7 @@ set_xray_config() {
         "decryption": "none",
         "encryption": "none",
         "clients": [
-          {"id": "$UUID", "email": "main", "flow": "xtls-rprx-vision"}
+          {"id": "$UUID", "email": "$XRAY_EMAIL", "flow": "xtls-rprx-vision"}
         ]
       },
       "streamSettings": {
@@ -144,7 +142,7 @@ set_xray_config() {
           "minClientVer": "",
           "maxClientVer": "",
           "maxTimeDiff": 0,
-          "shortIds": ["$XRAY_SHORT_IDS"]
+          "shortIds": ["$XRAY_SHORT_ID"]
         }
       },
       "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
@@ -239,11 +237,6 @@ install_xray() {
   rm -f "$KEYS_FILE"
   install -m 0600 /dev/null "$KEYS_FILE"
 
-  {
-    echo "shortsid: $(openssl rand -hex 8)"
-    echo "uuid: $(xray uuid)"
-  } >> "$KEYS_FILE"
-
   xray x25519 >> "$KEYS_FILE"
 }
 
@@ -256,41 +249,25 @@ add_commands() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-read -r -p "Введите имя пользователя: " email
-
-if [[ -z "$email" || "$email" == *" "* ]]; then
-  echo "Имя пользователя не может быть пустым или содержать пробелы. Попробуйте снова."
-  exit 1
-fi
-
+UUID="$(xray uuid)"
+XRAY_SID="$(openssl rand -hex 8)"
+XRAY_EMAIL="$(openssl rand -hex 12)"
 KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
-user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$PATH_CONFIG" || true)"
 
-if [[ -z "$user_json" ]]; then
-  uuid="$(xray uuid)"
-  jq --arg email "$email" --arg uuid "$uuid" \
-     '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
-     "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
+jq --arg email "$XRAY_EMAIL" --arg uuid "$UUID" --arg sid "$XRAY_SID" \
+    '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
+    '.inbounds[0].streamSettings.realitySettings.shortIds += ["$sid"]' \
+    "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
 
-  systemctl restart xray
+systemctl restart xray
 
-  index="$(jq --arg email "$email" '.inbounds[0].settings.clients | to_entries[] | select(.value.email == $email) | .key' "$PATH_CONFIG")"
-  protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
-  uuid="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].id' "$PATH_CONFIG")"
-  pbk="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
-  sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
-  username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index].email' "$PATH_CONFIG")"
-  sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
-  ip="$(hostname -I | awk '{print $1}')"
+PROTOCOL="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
+PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
+SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
+IP="$(hostname -I | awk '{print $1}')"
 
-  link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$username"
-  echo ""
-  echo "Ссылка для подключения:"
-  echo "$link"
-else
-  echo "Пользователь с таким именем уже существует. Попробуйте снова."
-fi
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$XRAY_SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$UUID"
 EOF
 
   # xrayrmuser
@@ -345,10 +322,7 @@ sid="$(awk -F': ' '/shortsid/ {print $2; exit}' $KEYS_FILE)"
 sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(hostname -I | awk '{print $1}')"
 
-link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
-echo ""
-echo "Ссылка для подключения:"
-echo "$link"
+echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none#vless-reality-cloud-warp-main"
 EOF
 
   # xraysharelink
@@ -383,10 +357,7 @@ username="$(jq --argjson index "$index" -r '.inbounds[0].settings.clients[$index
 sni="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 ip="$(curl -4 -fsS icanhazip.com || hostname -I | awk '{print $1}')"
 
-link="$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
-echo ""
-echo "Ссылка для подключения:"
-echo "$link"
+echo "$protocol://$uuid@$ip?security=reality&sni=$sni&fp=chrome&pbk=$pbk&sid=$sid&alpn=h2&type=tcp&flow=xtls-rprx-vision&packetEncoding=xudp&encryption=none##vless-reality-cloud-warp-$username"
 EOF
 }
 
