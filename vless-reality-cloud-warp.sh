@@ -181,7 +181,7 @@ EOF
 }
 
 set_protocols_forwarding() {  
-  local ip=$(dig +short A "$MASK_DOMAIN" | head -n1)
+  local ip=$(dig +short A "$MASK_DOMAIN" | tail -n1)
   local face="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
   echo "$ip"
   echo ""
