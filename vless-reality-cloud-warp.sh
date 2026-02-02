@@ -54,7 +54,7 @@ set_xray_config() {
     local XRAY_PRIV=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/PrivateKey/ {print $2}')
     local XRAY_SHORT_IDS=$(cat /usr/local/etc/xray/.keys | awk -F': ' '/shortsid/ {print $2}')
 
-    if [[ -z "$UUID" || -z "$XRAY_PRIV" || -z "$XRAY_PUB" ]]; then
+    if [[ -z "$UUID" || -z "$XRAY_PRIV" || -z "$XRAY_SHORT_IDS" ]]; then
       echo "$ERROR Failed to generate UUID/x25519"
       exit 1
     fi
