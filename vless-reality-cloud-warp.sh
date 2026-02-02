@@ -261,7 +261,7 @@ if [[ -z "$email" || "$email" == *" "* ]]; then
   exit 1
 fi
 
-PATH_CONFIG="$XRAY_PATH_CONFIG"
+PATH_CONFIG="/usr/local/etc/xray/config.json"
 user_json="$(jq --arg email "$email" '.inbounds[0].settings.clients[] | select(.email == $email)' "$PATH_CONFIG" || true)"
 
 if [[ -z "$user_json" ]]; then
@@ -296,7 +296,7 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-PATH_CONFIG="$XRAY_PATH_CONFIG"
+PATH_CONFIG="/usr/local/etc/xray/config.json"
 mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
 
 if [[ ${#emails[@]} -eq 0 ]]; then
@@ -333,7 +333,7 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-PATH_CONFIG="$XRAY_PATH_CONFIG"
+PATH_CONFIG="/usr/local/etc/xray/config.json"
 protocol="$(jq -r '.inbounds[0].protocol' "$PATH_CONFIG")"
 uuid="$(awk -F': ' '/uuid/ {print $2; exit}' /usr/local/etc/xray/.keys)"
 pbk="$(awk -F': ' '/Password/ {print $2; exit}' /usr/local/etc/xray/.keys)"
@@ -353,7 +353,7 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-PATH_CONFIG="$XRAY_PATH_CONFIG"
+PATH_CONFIG="/usr/local/etc/xray/config.json"
 mapfile -t emails < <(jq -r '.inbounds[0].settings.clients[].email' "$PATH_CONFIG")
 
 for i in "${!emails[@]}"; do
