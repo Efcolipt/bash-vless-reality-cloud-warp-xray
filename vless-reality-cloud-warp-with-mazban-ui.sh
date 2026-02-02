@@ -124,11 +124,6 @@ set_xray_config() {
   },
   "stats": {},
 
-  "dns": {
-    "servers": ["system"],
-    "queryStrategy": "UseIPv4"
-  },
-
   "inbounds": [
     {
       "listen": "127.0.0.1",
@@ -144,6 +139,7 @@ set_xray_config() {
       "tag": "reality-in",
       "settings": {
         "decryption": "none",
+        "encryption": "none",
         "clients": [
           { "id": "$UUID", "email": "main", "flow": "xtls-rprx-vision" }
         ]
@@ -152,12 +148,17 @@ set_xray_config() {
         "network": "tcp",
         "security": "reality",
         "realitySettings": {
+          "show": false,
           "dest": "$MASK_DOMAIN:443",
           "serverNames": ["$MASK_DOMAIN"],
           "privateKey": "$XRAY_PRIV",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 0,
           "shortIds": ["$XRAY_SHORT_IDS"]
         }
-      }
+      },
+      "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
     }
   ],
 
@@ -170,22 +171,42 @@ set_xray_config() {
       "settings": {
         "secretKey": "$WARP_PRIV",
         "address": ["172.16.0.2/32", "$WARP_V6/128"],
-        "peers": [{
-          "endpoint": "engage.cloudflareclient.com:2408",
-          "allowedIPs": ["0.0.0.0/0", "::/0"],
-          "publicKey": "$WARP_PUB"
-        }],
+        "peers": [
+          {
+            "endpoint" : "engage.cloudflareclient.com:2408",
+            "allowedIPs": ["0.0.0.0/0", "::/0"],
+            "publicKey": "$WARP_PUB"
+          }
+        ],
+        "mtu": 1280,
         "reserved": "$WARP_RESERVED",
-        "mtu": 1280
+        "workers": 2,
+        "domainStrategy": "ForceIP"
       }
     }
   ],
 
   "routing": {
     "rules": [
-      { "protocol": "bittorrent", "outboundTag": "block" },
-      { "domain": ["geosite:category-ads-all"], "outboundTag": "block" },
-      { "ip": ["geoip:ru"], "outboundTag": "warp" }
+      {"type": "field", "protocol": "bittorrent", "outboundTag": "block"},
+      {
+        "domain": ["geosite:category-ads-all", "geosite:win-spy"],
+        "outboundTag": "block"
+      },
+      {
+        "type": "field",
+        "domain": [
+          "geosite:openai",      "geosite:category-ru", "geosite:private",
+          "domain:ru",           "domain:su",           "domain:by",
+          "domain:xn--p1ai"
+        ],
+        "outboundTag": "warp"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:ru", "geoip:private"],
+        "outboundTag": "warp"
+      }
     ]
   }
 }
