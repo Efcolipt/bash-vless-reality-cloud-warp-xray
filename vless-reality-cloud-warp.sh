@@ -129,10 +129,6 @@ set_xray_config() {
   cat >"$XRAY_PATH_CONFIG" <<EOF
 {
   "log": {"loglevel": "info"},
-  "dns": {
-    "servers": ["system"],
-    "queryStrategy": "UseIPv4"
-  },
   "inbounds": [
     {
       "listen": "$LISTEN_IP",
