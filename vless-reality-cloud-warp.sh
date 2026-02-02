@@ -171,6 +171,7 @@ set_xray_config() {
         "peers": [
           {
             "endpoint" : "engage.cloudflareclient.com:2408",
+            "allowedIPs": ["0.0.0.0/0", "::/0"],
             "publicKey": "$WARP_PUB"
           }
         ],
