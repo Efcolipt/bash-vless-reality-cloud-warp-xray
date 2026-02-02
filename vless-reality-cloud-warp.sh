@@ -9,7 +9,7 @@ ERROR="[ERROR]"
 # vl 150
 
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
-MASK_DOMAIN="www.samsung.com"
+MASK_DOMAIN="vu.nl"
 
 # --- helpers ---------------------------------------------------------------
 
