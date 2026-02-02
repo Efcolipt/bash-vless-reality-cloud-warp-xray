@@ -255,10 +255,16 @@ EMAIL="$(openssl rand -hex 12)"
 KEYS_FILE="/usr/local/etc/xray/.keys"
 PATH_CONFIG="/usr/local/etc/xray/config.json"
 
-jq --arg email "$EMAIL" --arg uuid "$UUID" --arg sid "$SID" \
-    '.inbounds[0].settings.clients += [{"email": $email, "id": $uuid, "flow": "xtls-rprx-vision"}]' \
-    '.inbounds[0].streamSettings.realitySettings.shortIds += ["$sid"]' \
-    "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
+jq --arg email "$EMAIL" --arg uuid "$UUID" --arg sid "$SID" '
+  .inbounds[0].settings.clients += [
+    {
+      "email": $email,
+      "id": $uuid,
+      "flow": "xtls-rprx-vision"
+    }
+  ]
+  | .inbounds[0].streamSettings.realitySettings.shortIds += [$sid]
+' "$PATH_CONFIG" > /tmp/xray.tmp.json && mv /tmp/xray.tmp.json "$PATH_CONFIG"
 
 systemctl restart xray
 
