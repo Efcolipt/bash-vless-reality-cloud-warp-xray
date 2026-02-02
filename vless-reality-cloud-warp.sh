@@ -96,7 +96,7 @@ set_xray_config() {
 
   log "Registering WARP"
   local WARP_INFO
-  WARP_INFO="$(bash -c "$(curl -fsSL warp-reg.vercel.app)")"
+  WARP_INFO="$(bash -c "$(curl -fsSL https://raw.githubusercontent.com/chise0713/warp-reg.sh/master/warp-reg.sh)")"
 
   local WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
   WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
@@ -232,7 +232,6 @@ install_xray() {
 }
 
 
-
 add_commands() {
   # xraynewuser
   install -m 0755 /dev/null /usr/local/bin/xraynewuser
@@ -356,9 +355,10 @@ main() {
   set_xray_config
   apply_sysctl
   set_protocols_forwarding "$MASK_DOMAIN"
-  add_commands
 
   systemctl restart xray
+
+  add_commands
 
   echo "
     Команды для управления пользователями Xray:
