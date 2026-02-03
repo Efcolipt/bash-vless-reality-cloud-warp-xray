@@ -424,16 +424,18 @@ JSON
   config_account=$(gen_random_string 10)
   config_password=$(gen_random_string 18)
   config_webBasePath=$(gen_random_string 18)
+  config_port=$(shuf -i 1024-62000 -n 1)
 
 
-  "$xui_folder/x-ui" setting -username "$config_account" -password "$config_password" -resetTwoFactor false
+  "$xui_folder/x-ui" setting -port "$config_port" -username "$config_account" -password "$config_password" -resetTwoFactor false
   "$xui_folder/x-ui" setting -webBasePath "$config_webBasePath"
 
   echo -e "Panel login username: ${config_account}"
   echo -e "Panel login password: ${config_password}"
+  echo -e "Web Base port: ${config_port}"
   echo -e "Web base path: ${config_webBasePath}"
 
-  "$xui_folder/x-ui" settings -y
+  x-ui settings -y
 
   # read -r -p "PORT: " XUI_PORT
   # read -r -p "USER: " XUI_USER
