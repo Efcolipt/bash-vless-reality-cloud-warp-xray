@@ -309,26 +309,124 @@ fi
 
 mv x-ui/ /usr/local/
 
+cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
+{
+  "api": {
+    "services": [
+      "HandlerService",
+      "LoggerService",
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
+    }
+  ],
+  "log": {
+    "dnsLog": true,
+    "error": "",
+    "loglevel": "info",
+    "maskAddress": ""
+  },
+  "metrics": {
+    "listen": "127.0.0.1:11111",
+    "tag": "metrics_out"
+  },
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true,
+      "statsOutboundDownlink": false,
+      "statsOutboundUplink": false
+    }
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ],
+        "domain": [
+          "geosite:category-ads-all",
+          "geosite:win-spy"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "warp",
+        "ip": [
+          "ext:geoip_RU.dat:ru",
+          "geoip:private"
+        ],
+        "domain": [
+          "regexp:.*\\.su$",
+          "regexp:.*\\.ru$",
+          "regexp:.*\\.by$",
+          "ext:geosite_RU.dat:ru-available-only-inside",
+          "regexp:.*\\.xn--p1ai$"
+        ]
+      }
+    ]
+  },
+  "stats": {}
+}
+JSON
+
 systemctl daemon-reload
 systemctl enable x-ui
 systemctl restart x-ui
 
 
-  read -r -p "PORT: " XUI_PORT
-  read -r -p "USER: " XUI_USER
-  read -r -p "PATH: " XUI_PATH
-  read -r -s -p "PASSWORD: " XUI_PASSWORD
-  echo
+  # read -r -p "PORT: " XUI_PORT
+  # read -r -p "USER: " XUI_USER
+  # read -r -p "PATH: " XUI_PATH
+  # read -r -s -p "PASSWORD: " XUI_PASSWORD
+  # echo
 
-  JAR="$(mktemp)"
-  trap 'rm -f "$JAR"' EXIT
+  # JAR="$(mktemp)"
+  # trap 'rm -f "$JAR"' EXIT
 
 
-  curl -sSk -L \
-    -c "$JAR" \
-    -H "Content-Type: application/json" \
-    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
+  # curl -sSk -L \
+  #   -c "$JAR" \
+  #   -H "Content-Type: application/json" \
+  #   -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
+  #   --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
   log "DONE"
 }
