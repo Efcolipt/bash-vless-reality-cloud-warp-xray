@@ -234,6 +234,9 @@ JSON
   JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
+
+  echo -e " яздесб"
+
   curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
