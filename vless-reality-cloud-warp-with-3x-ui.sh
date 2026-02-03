@@ -274,7 +274,7 @@ JSON
     | jq -r '.obj.privateKey'
   )"
 
-  
+  echo "$PRIVATE_KEY" 
 
   local BODY="$(jq -n \
     --arg mask_domain "$MASK_DOMAIN" \
@@ -291,7 +291,7 @@ JSON
       listen: $listen_ip,
       port: 443,
       protocol: "vless",
-      settings: {},
+      settings: "{\"clients\":[]}",
       streamSettings: {
         network: "tcp",
         security: "reality",
