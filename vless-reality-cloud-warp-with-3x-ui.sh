@@ -276,11 +276,35 @@ JSON
 
   echo "$PRIVATE_KEY" 
 
+
+  local SNIFFING="$(jq -cn \
+    '{
+      enabled: true,
+      destOverride: ["http","tls","quic"]
+    }'
+  )"
+
+  local STREAM_SETTINGS="$(jq -cn \
+  --arg mask_domain "$MASK_DOMAIN" \
+  --arg xray_priv "$PRIVATE_KEY" \
+  --arg short_id "$SHORT_ID" \
+  '{
+    network: "tcp",
+    security: "reality",
+    realitySettings: {
+      show: false,
+      dest: ($mask_domain + ":443"),
+      serverNames: [$mask_domain],
+      privateKey: $xray_priv,
+      shortIds: [$short_id]
+    }
+  }'
+)"
+
   local BODY="$(jq -n \
-    --arg mask_domain "$MASK_DOMAIN" \
-    --arg xray_priv "$PRIVATE_KEY" \
     --arg listen_ip "$LISTEN_IP" \
-    --arg short_id "$SHORT_ID" \
+    --arg streamSettings "$STREAM_SETTINGS" \
+    --arg sniffing "$SNIFFING" \
     '{
       up: 0,
       down: 0,
@@ -292,21 +316,8 @@ JSON
       port: 443,
       protocol: "vless",
       settings: "{\"clients\":[]}",
-      streamSettings: {
-        network: "tcp",
-        security: "reality",
-        realitySettings: {
-          show: false,
-          dest: ($mask_domain + ":443"),
-          serverNames: [$mask_domain],
-          privateKey: $xray_priv,
-          shortIds: [$short_id]
-        }
-      },
-      sniffing: {
-        enabled: true,
-        destOverride: ["http","tls","quic"]
-      }
+      streamSettings: $streamSettings,
+      sniffing: $sniffing
     }'
   )"
   
