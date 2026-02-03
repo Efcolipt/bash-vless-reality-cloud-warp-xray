@@ -224,17 +224,12 @@ JSON
   local XUI_PORT=$(shuf -i 1024-62000 -n 1)
   local IS_EXIST_CERT=$("$XUI_FOLDER/x-ui" setting -getCert true | grep 'cert:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
 
-  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
+  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
 
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
   echo -e "Web base path: ${XUI_PATH}"
-
-  # if [[ -z "$IS_EXIST_CERT" ]]; then
-  #   x-ui settings
-  # fi
-
   
   JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
