@@ -287,7 +287,29 @@ main() {
   cp x-ui/x-ui.sh /usr/bin/x-ui
 
 
-  cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
+
+# Copy appropriate service file based on OS
+if [ -f "x-ui/x-ui.service" ]; then
+    cp -f x-ui/x-ui.service /etc/systemd/system/
+elif [[ "$release" == "ubuntu" || "$release" == "debian" || "$release" == "armbian" ]]; then
+    if [ -f "x-ui/x-ui.service.debian" ]; then
+        cp -f x-ui/x-ui.service.debian /etc/systemd/system/x-ui.service
+    else
+        echo "Service file not found in archive, downloading..."
+        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian
+    fi
+else
+    if [ -f "x-ui/x-ui.service.rhel" ]; then
+        cp -f x-ui/x-ui.service.rhel /etc/systemd/system/x-ui.service
+    else
+        echo "Service file not found in archive, downloading..."
+        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel
+    fi
+fi
+
+mv x-ui/ /usr/local/
+
+cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 {
   "api": {
     "services": [
