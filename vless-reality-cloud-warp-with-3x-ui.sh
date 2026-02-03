@@ -265,8 +265,6 @@ mv x-ui/ /usr/local/
         }'
   )"
 
-
-
   local resp="$(
     curl -sSk -L \
       -b "$JAR" -c "$JAR" \
@@ -372,6 +370,8 @@ mv x-ui/ /usr/local/
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY"
+
+  echo ""
 
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
