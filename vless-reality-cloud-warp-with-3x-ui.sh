@@ -174,9 +174,22 @@ mv x-ui/ /usr/local/
   )"
 
 
+  local WARP_INFO
+  WARP_INFO="$(bash -c "$(curl -fsSL https://raw.githubusercontent.com/chise0713/warp-reg.sh/master/warp-reg.sh)")"
+
+  local WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
+  WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
+  WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
+  WARP_V6="$(jq -r '.v6' <<<"$WARP_INFO")"
+  WARP_RESERVED="$(jq -r '.reserved_str' <<<"$WARP_INFO")"
+
   local INIT_CONFIG="$(
-      jq -n '
-        {
+      jq -cn \
+    --arg warp_priv "$WARP_PRIV" \
+    --arg warp_v6 "$WARP_V6" \
+    --arg warp_pub "$WARP_PUB" \
+    --arg warp_res "$WARP_RESERVED" \
+      '{
           "api": {
             "services": ["HandlerService", "LoggerService", "StatsService"],
             "tag": "api"
@@ -194,7 +207,26 @@ mv x-ui/ /usr/local/
           "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
           "outbounds": [
             {"protocol": "freedom",   "tag": "direct"                 },
-            {"protocol": "blackhole", "tag": "blocked", "settings": {}}
+            {"protocol": "blackhole", "tag": "blocked", "settings": {}},
+            {
+              "protocol": "wireguard",
+              "tag": "warp",
+              "settings": {
+                "secretKey": $warp_priv,
+                "address": ["172.16.0.2/32", ($warp_v6 + "/128")],
+                "peers": [
+                  {
+                    "endpoint" : "engage.cloudflareclient.com:2408",
+                    "allowedIPs": ["0.0.0.0/0", "::/0"],
+                    "publicKey": $warp_pub
+                  }
+                ],
+                "mtu": 1280,
+                "reserved": $warp_res,
+                "workers": 2,
+                "domainStrategy": "ForceIP"
+              }
+            }
           ],
           "policy": {
             "levels": { "0": {"statsUserDownlink": true, "statsUserUplink": true} },
@@ -243,8 +275,6 @@ mv x-ui/ /usr/local/
       -H 'Content-Type: application/x-www-form-urlencoded' \
       --data-urlencode "xraySetting=$INIT_CONFIG" \
       -X POST "http://localhost:$XUI_PORT/panel/xray/update"\
-      
-
   )"
 
 
