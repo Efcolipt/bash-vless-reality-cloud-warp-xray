@@ -301,6 +301,10 @@ JSON
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY"
+
+
+  systemctl restart x-ui
+
 }
 
 main
