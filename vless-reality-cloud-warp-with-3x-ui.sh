@@ -222,7 +222,6 @@ JSON
   local XUI_PASSWORD=$(gen_random_string 18)
   local XUI_PATH=$(gen_random_string 18)
   local XUI_PORT=$(shuf -i 1024-62000 -n 1)
-  local IS_EXIST_CERT=$("$XUI_FOLDER/x-ui" setting -getCert true | grep 'cert:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
 
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
 
