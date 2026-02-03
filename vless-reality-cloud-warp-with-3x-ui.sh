@@ -371,14 +371,15 @@ mv x-ui/ /usr/local/
     --header 'Content-Type: application/json' \
     --data "$BODY"
 
+  apply_sysctl
+
+  x-ui settings
+
+
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
   echo -e "http://$LISTEN_IP:$XUI_PORT"
-
-  apply_sysctl
-
-  x-ui settings
 }
 
 main
