@@ -239,7 +239,7 @@ JSON
 
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
 
-  "$XUI_FOLDER/x-ui migrate"
+  # "$XUI_FOLDER/x-ui migrate"
 
   systemctl restart x-ui
 
