@@ -194,6 +194,15 @@ mv x-ui/ /usr/local/
             "services": ["HandlerService", "LoggerService", "StatsService"],
             "tag": "api"
           },
+          "dns": {
+            "servers": [
+              "https+local://8.8.4.4/dns-query",
+              "https+local://8.8.8.8/dns-query",
+              "https+local://1.1.1.1/dns-query",
+              "localhost"
+            ],
+            "queryStrategy": "UseIPv4"
+          },
           "inbounds": [
             {
               "listen": "127.0.0.1",
@@ -203,7 +212,7 @@ mv x-ui/ /usr/local/
               "tag": "api"
             }
           ],
-          "log": {"dnsLog": true, "error": "", "loglevel": "info", "maskAddress": ""},
+          "log": {"dnsLog": false, "error": "", "loglevel": "error", "maskAddress": ""},
           "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
           "outbounds": [
             {"protocol": "freedom",   "tag": "direct"                 },
