@@ -74,7 +74,7 @@ main() {
   apt update
   apt install -y jq openssl
 
-  x-ui uninstall -y
+  x-ui uninstall -y || true
 
   ARCH=$(uname -m)
   case "${ARCH}" in
