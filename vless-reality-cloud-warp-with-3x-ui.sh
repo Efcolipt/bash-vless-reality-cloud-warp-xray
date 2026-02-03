@@ -248,16 +248,14 @@ JSON
   resp="$(curl -v -k -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
+    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login")"
 
   echo "$resp" 
 
   resp="$(curl -v -k -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
+    -X POST "http://localhost:$XUI_PORT/login")"
 
   echo "$resp" 
 
@@ -321,11 +319,11 @@ JSON
     }'
   )"
   
-  resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
-    --data "$BODY")
+    --data "$BODY")"
 
   echo "$resp" 
 
