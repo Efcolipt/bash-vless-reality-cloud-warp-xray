@@ -238,6 +238,8 @@ JSON
 
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
 
+  "$XUI_FOLDER/x-ui migrate"
+
   systemctl restart x-ui
 
   wait_for_port "$XUI_PORT"
@@ -316,7 +318,7 @@ JSON
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
-  echo -e "https://$LISTEN_IP:$XUI_PORT/$XUI_PATH"
+  echo -e "https://$LISTEN_IP:$XUI_PORT/$XUI_PATH/login"
 }
 
 main
