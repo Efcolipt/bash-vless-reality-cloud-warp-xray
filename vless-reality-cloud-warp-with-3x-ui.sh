@@ -305,8 +305,6 @@ JSON
 
   echo "$resp" 
 
-
-  
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
