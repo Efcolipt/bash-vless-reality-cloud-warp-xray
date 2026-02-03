@@ -234,9 +234,7 @@ JSON
   trap 'rm -f "$JAR"' EXIT
 
 
-  echo -e " яздесб"
-
-  curl -sSk -L \
+  echo   curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
@@ -293,7 +291,7 @@ JSON
     }'
   )"
   
-  curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  echo curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
