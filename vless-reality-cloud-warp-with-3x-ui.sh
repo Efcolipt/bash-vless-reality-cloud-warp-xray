@@ -105,36 +105,8 @@ main() {
   rm -rf x-ui/ /usr/local/x-ui/ /usr/bin/x-ui
   tar zxvf x-ui-linux-${XUI_ARCH}.tar.gz
   chmod +x x-ui/x-ui x-ui/bin/xray-linux-* x-ui/x-ui.sh
-  cp x-ui/x-ui.sh /usr/bin/x-ui
 
-
-
-# Copy appropriate service file based on OS
-if [ -f "x-ui/x-ui.service" ]; then
-    cp -f x-ui/x-ui.service /etc/systemd/system/
-elif [[ "$release" == "ubuntu" || "$release" == "debian" || "$release" == "armbian" ]]; then
-    if [ -f "x-ui/x-ui.service.debian" ]; then
-        cp -f x-ui/x-ui.service.debian /etc/systemd/system/x-ui.service
-    else
-        echo "Service file not found in archive, downloading..."
-        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian
-    fi
-else
-    if [ -f "x-ui/x-ui.service.rhel" ]; then
-        cp -f x-ui/x-ui.service.rhel /etc/systemd/system/x-ui.service
-    else
-        echo "Service file not found in archive, downloading..."
-        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel
-    fi
-fi
-
-mv x-ui/ /usr/local/
-
-systemctl daemon-reload
-systemctl enable x-ui
-systemctl restart x-ui
-
-cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
+cat >"x-ui/bin/config.json" <<'JSON'
 {
   "api": {
     "services": ["HandlerService", "LoggerService", "StatsService"],
@@ -191,10 +163,36 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
   "stats": {}
 }
 JSON
-systemctl restart x-ui
+  cp x-ui/x-ui.sh /usr/bin/x-ui
 
-  cat /usr/local/x-ui/bin/config.json
 
+
+# Copy appropriate service file based on OS
+if [ -f "x-ui/x-ui.service" ]; then
+    cp -f x-ui/x-ui.service /etc/systemd/system/
+elif [[ "$release" == "ubuntu" || "$release" == "debian" || "$release" == "armbian" ]]; then
+    if [ -f "x-ui/x-ui.service.debian" ]; then
+        cp -f x-ui/x-ui.service.debian /etc/systemd/system/x-ui.service
+    else
+        echo "Service file not found in archive, downloading..."
+        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian
+    fi
+else
+    if [ -f "x-ui/x-ui.service.rhel" ]; then
+        cp -f x-ui/x-ui.service.rhel /etc/systemd/system/x-ui.service
+    else
+        echo "Service file not found in archive, downloading..."
+        curl -fLo /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel
+    fi
+fi
+
+mv x-ui/ /usr/local/
+
+
+
+  systemctl daemon-reload
+  systemctl enable x-ui
+  systemctl restart x-ui
 
   local XUI_FOLDER="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
   local XUI_USER=$(gen_random_string 10)
