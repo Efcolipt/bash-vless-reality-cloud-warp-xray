@@ -242,14 +242,27 @@ JSON
 
   wait_for_port "$XUI_PORT"
   
-  JAR="$(mktemp)"
+  local resp JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
-
-  local resp="$(curl -sSk -L \
+  resp=$(curl -v -k -L \
     -c "$JAR" \
-    --connect-timeout 5 \
-    --max-time 10 \
+    -H "Content-Type: application/json" \
+    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"))
+
+  echo "$resp" 
+
+  resp=$(curl -v -k -L \
+    -c "$JAR" \
+    -H "Content-Type: application/json" \
+    -X POST "http://localhost:$XUI_PORT/login" \
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"))
+
+  echo "$resp" 
+
+  resp="$(curl -sSk -L \
+    -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
@@ -265,14 +278,13 @@ JSON
   local MASK_DOMAIN="yahoo.com"
   local PRIVATE_KEY="$(
     curl -sSk -L \
-      --connect-timeout 5 \
-      --max-time 10 \
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       -X GET "http://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
     | jq -r '.obj.privateKey'
   )"
+
   
 
   local BODY="$(jq -n \
@@ -309,10 +321,8 @@ JSON
     }'
   )"
   
-  local resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
-    --connect-timeout 5 \
-    --max-time 10 \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY")
