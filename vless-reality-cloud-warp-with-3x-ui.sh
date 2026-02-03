@@ -262,8 +262,7 @@ mv x-ui/ /usr/local/
             ]
           },
           "stats": {}
-        }
-      '
+        }'
   )"
 
 
