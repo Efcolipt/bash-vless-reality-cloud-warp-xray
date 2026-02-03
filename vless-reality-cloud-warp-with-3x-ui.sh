@@ -132,11 +132,7 @@ mv x-ui/ /usr/local/
 cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 {
   "api": {
-    "services": [
-      "HandlerService",
-      "LoggerService",
-      "StatsService"
-    ],
+    "services": ["HandlerService", "LoggerService", "StatsService"],
     "tag": "api"
   },
   "inbounds": [
@@ -144,75 +140,39 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
       "listen": "127.0.0.1",
       "port": 62789,
       "protocol": "tunnel",
-      "settings": {
-        "address": "127.0.0.1"
-      },
+      "settings": {"address": "127.0.0.1"},
       "tag": "api"
     }
   ],
-  "log": {
-    "dnsLog": true,
-    "error": "",
-    "loglevel": "info",
-    "maskAddress": ""
-  },
-  "metrics": {
-    "listen": "127.0.0.1:11111",
-    "tag": "metrics_out"
-  },
+  "log": {"dnsLog": true, "error": "", "loglevel": "info", "maskAddress": ""},
+  "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
   "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct"
-    },
-    {
-      "protocol": "blackhole",
-      "settings": {},
-      "tag": "blocked"
-    }
+    {"protocol": "freedom",   "tag": "direct"                 },
+    {"protocol": "blackhole", "tag": "blocked", "settings": {}}
   ],
   "policy": {
-    "levels": {
-      "0": {
-        "statsUserDownlink": true,
-        "statsUserUplink": true
-      }
-    },
+    "levels": { "0": {"statsUserDownlink": true, "statsUserUplink": true} },
     "system": {
-      "statsInboundDownlink": true,
-      "statsInboundUplink": true,
+      "statsInboundDownlink" : true,
+      "statsInboundUplink"   : true,
       "statsOutboundDownlink": false,
-      "statsOutboundUplink": false
+      "statsOutboundUplink"  : false
     }
   },
   "routing": {
     "domainStrategy": "IPIfNonMatch",
     "rules": [
-      {
-        "inboundTag": [
-          "api"
-        ],
-        "outboundTag": "api",
-        "type": "field"
-      },
+      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
       {
         "type": "field",
         "outboundTag": "blocked",
-        "protocol": [
-          "bittorrent"
-        ],
-        "domain": [
-          "geosite:category-ads-all",
-          "geosite:win-spy"
-        ]
+        "protocol": ["bittorrent"],
+        "domain": ["geosite:category-ads-all", "geosite:win-spy"]
       },
       {
         "type": "field",
         "outboundTag": "warp",
-        "ip": [
-          "ext:geoip_RU.dat:ru",
-          "geoip:private"
-        ],
+        "ip": ["ext:geoip_RU.dat:ru", "geoip:private"],
         "domain": [
           "regexp:.*\\.su$",
           "regexp:.*\\.ru$",
@@ -234,29 +194,23 @@ JSON
   local XUI_FOLDER="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
   local XUI_USER=$(gen_random_string 10)
   local XUI_PASSWORD=$(gen_random_string 18)
-  local XUI_PATH=$(gen_random_string 18)
   local XUI_PORT=$(shuf -i 1024-62000 -n 1)
 
-  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
-
-  # "$XUI_FOLDER/x-ui migrate"
+  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false
 
   systemctl restart x-ui
 
   wait_for_port "$XUI_PORT"
   
-  local resp
   local JAR
   JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
-  resp="$(curl -sSk -L \
+  curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
-
-  echo "$resp" 
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
 
   local LISTEN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -365,18 +319,16 @@ JSON
     }'
   )"
   
-  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/panel/api/inbounds/add" \
+  curl -sSk -L -X POST "http://localhost:$XUI_PORT/panel/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
-    --data "$BODY")"
-
-  echo "$resp" 
+    --data "$BODY"
 
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
-  echo -e "https://$LISTEN_IP:$XUI_PORT/$XUI_PATH"
+  echo -e "http://$LISTEN_IP:$XUI_PORT"
 }
 
 main
