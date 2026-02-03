@@ -132,6 +132,7 @@ mv x-ui/ /usr/local/
 
 systemctl daemon-reload
 systemctl enable x-ui
+systemctl restart x-ui
 
 cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 {
@@ -190,10 +191,10 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
   "stats": {}
 }
 JSON
+systemctl restart x-ui
 
   cat /usr/local/x-ui/bin/config.json
 
-  systemctl restart x-ui
 
   local XUI_FOLDER="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
   local XUI_USER=$(gen_random_string 10)
