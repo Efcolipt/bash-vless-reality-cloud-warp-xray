@@ -272,10 +272,117 @@ main() {
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
 
+
+CFG_FILE="$(mktemp)"
+trap 'rm -f "$JAR" "$CFG_FILE"' EXIT
+
+cat >"$CFG_FILE" <<'JSON'
+{
+  "api": {
+    "services": [
+      "HandlerService",
+      "LoggerService",
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
+    }
+  ],
+  "log": {
+    "dnsLog": true,
+    "error": "",
+    "loglevel": "info",
+    "maskAddress": ""
+  },
+  "metrics": {
+    "listen": "127.0.0.1:11111",
+    "tag": "metrics_out"
+  },
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true,
+      "statsOutboundDownlink": false,
+      "statsOutboundUplink": false
+    }
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ],
+        "domain": [
+          "geosite:category-ads-all",
+          "geosite:win-spy"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "warp",
+        "ip": [
+          "ext:geoip_RU.dat:ru",
+          "geoip:private"
+        ],
+        "domain": [
+          "regexp:.*\\.su$",
+          "regexp:.*\\.ru$",
+          "regexp:.*\\.by$",
+          "ext:geosite_RU.dat:ru-available-only-inside",
+          "regexp:.*\\.xn--p1ai$"
+        ]
+      }
+    ]
+  },
+  "stats": {}
+}
+JSON
+
+  curl -sSk -L \
+    -c "$JAR" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/panel/xray/update" \
+    --data-urlencode "xraySetting=$XUI_USER"
+
+
     echo "Cookie jar: $JAR"
     cat "$JAR"
-
-
 
   log "DONE"
 }
