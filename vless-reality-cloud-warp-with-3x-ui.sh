@@ -315,7 +315,7 @@ JSON
       listen: $listen_ip,
       port: 443,
       protocol: "vless",
-      settings: "{\"clients\":[]}",
+      settings: "{ \"decryption\": \"none\",  \"encryption\": \"none\",  \"clients\":[]}",
       streamSettings: $streamSettings,
       sniffing: $sniffing
     }'
