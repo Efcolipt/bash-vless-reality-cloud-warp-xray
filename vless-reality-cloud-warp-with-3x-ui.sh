@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MASK_DOMAIN="yahoo.com"
+require_root() {
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
+}
 
 apply_sysctl() {
   log "Applying sysctl"
@@ -246,7 +248,8 @@ JSON
 
   local SHORT_ID="$(openssl rand -hex 8)"
 
-  XRAY_PRIV="$(
+  local MASK_DOMAIN="yahoo.com"
+  local PRIVATE_KEY="$(
     curl -sSk -L \
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
@@ -258,7 +261,7 @@ JSON
 
   local BODY="$(jq -n \
     --arg mask_domain "$MASK_DOMAIN" \
-    --arg xray_priv "$XRAY_PRIV" \
+    --arg xray_priv "$PRIVATE_KEY" \
     --arg listen_ip "$LISTEN_IP" \
     --arg short_id "$SHORT_ID" \
     '{
