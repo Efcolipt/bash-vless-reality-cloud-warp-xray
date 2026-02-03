@@ -74,8 +74,6 @@ main() {
   apt update
   apt install -y jq openssl
 
-  x-ui uninstall || true
-
   ARCH=$(uname -m)
   case "${ARCH}" in
     x86_64 | x64 | amd64) XUI_ARCH="amd64" ;;
