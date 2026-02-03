@@ -237,10 +237,12 @@ JSON
 
   local resp="$(curl -sSk -L \
     -c "$JAR" \
+    --connect-timeout 5 \
+    --max-time 10 \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
-    
+
   echo "$resp" 
 
 
@@ -252,6 +254,8 @@ JSON
   local MASK_DOMAIN="yahoo.com"
   local PRIVATE_KEY="$(
     curl -sSk -L \
+      --connect-timeout 5 \
+      --max-time 10 \
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
