@@ -245,19 +245,19 @@ JSON
   local resp JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
-  resp=$(curl -v -k -L \
+  resp="$(curl -v -k -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
 
   echo "$resp" 
 
-  resp=$(curl -v -k -L \
+  resp="$(curl -v -k -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
 
   echo "$resp" 
 
