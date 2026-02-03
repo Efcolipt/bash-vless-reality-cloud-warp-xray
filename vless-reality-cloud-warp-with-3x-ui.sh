@@ -245,24 +245,10 @@ JSON
   local resp JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
-  resp="$(curl -v -k -L \
-    -c "$JAR" \
-    -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login")"
-
-  echo "$resp" 
-
-  resp="$(curl -v -k -L \
-    -c "$JAR" \
-    -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/login")"
-
-  echo "$resp" 
-
   resp="$(curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
+    -X POST "http://localhost:$XUI_PORT/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
 
   echo "$resp" 
@@ -279,7 +265,7 @@ JSON
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
+      -X GET "http://localhost:$XUI_PORT/api/server/getNewX25519Cert" \
     | jq -r '.obj.privateKey'
   )"
 
@@ -319,7 +305,7 @@ JSON
     }'
   )"
   
-  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
