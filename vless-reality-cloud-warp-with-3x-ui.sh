@@ -237,7 +237,7 @@ JSON
   curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
+    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
 
@@ -252,7 +252,7 @@ JSON
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "https://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
+      -X GET "http://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
     | jq -r '.obj.privateKey'
   )"
   
@@ -291,7 +291,7 @@ JSON
     }'
   )"
   
-  curl -sSk -L -X POST "https://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
