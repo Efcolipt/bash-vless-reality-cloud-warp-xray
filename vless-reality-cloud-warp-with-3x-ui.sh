@@ -265,10 +265,10 @@ main() {
   trap 'rm -f "$JAR"' EXIT
 
 
-  curl -sS -L \
+  curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
+    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
 
