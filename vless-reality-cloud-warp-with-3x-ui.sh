@@ -5,11 +5,6 @@ INFO="[INFO]"
 WARN="[WARN]"
 ERROR="[ERROR]"
 
-# yahoo 100
-# www cloud 400
-# vl 150
-# github.com 400
-
 XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="yahoo.com"
 
@@ -223,21 +218,19 @@ set_xray_config() {
 EOF
 }
 
-# --- forwarding ------------------------------------------------------------
+set_protocols_forwarding() {
+  log "Set protocols forwarding"
 
-# set_protocols_forwarding() {
-#   log "Set protocols forwarding"
+  local ip face
+  ip="$(resolve_ipv4 "$MASK_DOMAIN")"
+  face="$(default_iface)"
 
-#   local ip face
-#   ip="$(resolve_ipv4 "$MASK_DOMAIN")"
-#   face="$(default_iface)"
+  iptables_add_once nat PREROUTING -i "$face" -p udp --dport 443 -j DNAT --to "$ip:443"
+  iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
 
-#   iptables_add_once nat PREROUTING -i "$face" -p udp --dport 443 -j DNAT --to "$ip:443"
-#   iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
-
-#   netfilter-persistent save || true
-#   restart_firewall_service_if_any
-# }
+  netfilter-persistent save || true
+  restart_firewall_service_if_any
+}
 
 install_xray() {
   log "Installing Xray"
@@ -253,47 +246,36 @@ install_xray() {
 
 export DOMAIN=$(hostname)
 
-install_marzban() {
-  log "Installing Marzban"
-
-  curl https://get.acme.sh | sh -s email=your@mail.com
-
-  mkdir -p /var/lib/marzban/certs
-
-  ~/.acme.sh/acme.sh \
-    --issue --force --standalone -d "$DOMAIN" \
-    --fullchain-file "/var/lib/marzban/certs/$DOMAIN.cer" \
-    --key-file "/var/lib/marzban/certs/$DOMAIN.cer.key"
-  
-
-  bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
-  marzban cli admin create --sudo
-
-  cat <<EOF >> /opt/marzban/.env
-UVICORN_SSL_CERTFILE=/var/lib/marzban/certs/$DOMAIN.cer
-UVICORN_SSL_KEYFILE=/var/lib/marzban/certs/$DOMAIN.cer.key
-XRAY_SUBSCRIPTION_URL_PREFIX=https://$DOMAIN
-EOF
-
-marzban restart
-}
-
 # --- main ------------------------------------------------------------------
 
 main() {
   require_root
 
   apt update
-  apt install -y dnsutils iptables socat iptables-persistent curl jq openssl
+  apt install -y iptables iptables-persistent curl jq openssl
 
-  install_xray
-  set_xray_config
-  apply_sysctl
-#   set_protocols_forwarding
 
-  systemctl restart xray
+  read -r -p "PORT: " XUI_PORT
+  read -r -p "USER: " XUI_USER
+  read -r -p "PATH: " XUI_PATH
+  read -r -s -p "PASSWORD: " XUI_PASSWORD
+  echo
 
-  install_marzban
+  JAR="$(mktemp)"
+  trap 'rm -f "$JAR"' EXIT
+
+
+  curl -sS -L \
+    -c "$JAR" \
+    -H "Content-Type: application/json" \
+    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
+
+
+    echo "Cookie jar: $JAR"
+    cat "$JAR"
+
+
 
   log "DONE"
 }
