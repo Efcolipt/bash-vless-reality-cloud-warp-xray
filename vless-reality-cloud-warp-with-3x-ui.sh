@@ -245,7 +245,9 @@ JSON
 
   wait_for_port "$XUI_PORT"
   
-  local resp JAR="$(mktemp)"
+  local resp
+  local JAR
+  JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
   resp="$(curl -sSk -L \
@@ -268,7 +270,7 @@ JSON
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/api/server/getNewX25519Cert" \
+      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewX25519Cert" \
     | jq -r '.obj.privateKey'
   )"
 
@@ -308,7 +310,7 @@ JSON
     }'
   )"
   
-  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/api/inbounds/add" \
+  resp="$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/panel/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
