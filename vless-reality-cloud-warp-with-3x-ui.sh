@@ -45,7 +45,7 @@ net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 EOF
 
-  sysctl --system >/dev/null
+  sysctl --system
 }
 
 wait_for_port() {
@@ -371,12 +371,14 @@ mv x-ui/ /usr/local/
     --header 'Content-Type: application/json' \
     --data "$BODY"
 
-  echo ""
-
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
   echo -e "http://$LISTEN_IP:$XUI_PORT"
+
+  apply_sysctl
+
+  x-ui settings
 }
 
 main
