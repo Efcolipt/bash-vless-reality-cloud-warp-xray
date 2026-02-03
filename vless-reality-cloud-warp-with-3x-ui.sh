@@ -53,6 +53,7 @@ gen_random_string() {
     echo "$random_string"
 }
 
+log() { echo "[LOG] $*"; }
 
 main() {
   require_root
@@ -234,11 +235,13 @@ JSON
   trap 'rm -f "$JAR"' EXIT
 
 
-  echo   curl -sSk -L \
+  local resp="$(curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
+    
+  echo "$resp" 
 
 
   local LISTEN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -291,12 +294,13 @@ JSON
     }'
   )"
   
-  echo curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  local resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
-    --data "$BODY"
+    --data "$BODY")
 
+  echo "$resp" 
 
   systemctl restart x-ui
 
