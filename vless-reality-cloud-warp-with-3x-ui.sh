@@ -419,39 +419,80 @@ JSON
   systemctl enable x-ui
   systemctl restart x-ui
 
-  xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
+  local XUI_FOLDER="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
+  local XUI_USER=$(gen_random_string 10)
+  local XUI_PASSWORD=$(gen_random_string 18)
+  local XUI_PATH=$(gen_random_string 18)
+  local XUI_PORT=$(shuf -i 1024-62000 -n 1)
+  local IS_EXIST_CERT=$("$XUI_FOLDER/x-ui" setting -getCert true | grep 'cert:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
 
-  config_account=$(gen_random_string 10)
-  config_password=$(gen_random_string 18)
-  config_webBasePath=$(gen_random_string 18)
-  config_port=$(shuf -i 1024-62000 -n 1)
+  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
+
+  echo -e "Panel login username: ${XUI_USER}"
+  echo -e "Panel login password: ${config_XUI_PASSWORDpassword}"
+  echo -e "Web Base port: ${XUI_PORT}"
+  echo -e "Web base path: ${XUI_PATH}"
+
+  if [[ -z "$IS_EXIST_CERT" ]]; then
+    x-ui settings
+
+  
+  JAR="$(mktemp)"
+  trap 'rm -f "$JAR"' EXIT
+
+  curl -sSk -L \
+    -c "$JAR" \
+    -H "Content-Type: application/json" \
+    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
 
-  "$xui_folder/x-ui" setting -port "$config_port" -username "$config_account" -password "$config_password" -resetTwoFactor false
-  "$xui_folder/x-ui" setting -webBasePath "$config_webBasePath"
+  local LISTEN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  [[ -n "$LISTEN_IP" ]] || LISTEN_IP="0.0.0.0"
 
-  echo -e "Panel login username: ${config_account}"
-  echo -e "Panel login password: ${config_password}"
-  echo -e "Web Base port: ${config_port}"
-  echo -e "Web base path: ${config_webBasePath}"
+  local SHORD_IDS="$(openssl rand -hex 8)"
 
-  x-ui settings -y
+  local BODY="$(jq -n \ 
+    --arg mask_domain "$MASK_DOMAIN" \
+    --arg xray_priv "$XRAY_PRIV" \
+    --arg listen_ip "$LISTEN_IP" \
+    --arg short_ids "$SHORD_IDS" \
+      '{
+        up: 0,
+        down: 0,
+        total: 0,
+        remark: "",
+        enable: true,
+        expiryTime: 0,
+        listen: "$listen_ip",
+        port: 443,
+        protocol: "vless",
+        settings: {},
+        streamSettings: {
+          network: "tcp",
+          security: "reality",
+          realitySettings: {
+            show: false,
+            dest: ($mask_domain + ":443"),
+            serverNames: [$mask_domain],
+            privateKey: $xray_priv,
+            shortIds: [$short_ids]
+          }
+        },
+        sniffing: {
+          enabled: true,
+          destOverride: ["http","tls","quic"]
+        }
+      }'
+  
+  )"
 
-  # read -r -p "PORT: " XUI_PORT
-  # read -r -p "USER: " XUI_USER
-  # read -r -p "PATH: " XUI_PATH
-  # read -r -s -p "PASSWORD: " XUI_PASSWORD
-  # echo
-
-  # JAR="$(mktemp)"
-  # trap 'rm -f "$JAR"' EXIT
-
-
-  # curl -sSk -L \
-  #   -c "$JAR" \
-  #   -H "Content-Type: application/json" \
-  #   -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
-  #   --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
+  curl -sSk -L "https://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+    -c "$JAR" \
+    --header 'Accept: application/json' \
+    --header 'Content-Type: application/json' \
+    --data "$BODY"
+  
 
   log "DONE"
 }
