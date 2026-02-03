@@ -248,6 +248,14 @@ export DOMAIN=$(hostname)
 
 # --- main ------------------------------------------------------------------
 
+
+gen_random_string() {
+    local length="$1"
+    local random_string=$(LC_ALL=C tr -dc 'a-zA-Z0-9' </dev/urandom | fold -w "$length" | head -n 1)
+    echo "$random_string"
+}
+
+
 main() {
   require_root
 
@@ -407,13 +415,25 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 }
 JSON
 
-systemctl daemon-reload
-systemctl enable x-ui
-systemctl restart x-ui
+  systemctl daemon-reload
+  systemctl enable x-ui
+  systemctl restart x-ui
+
+  xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
+
+  config_account=$(gen_random_string 10)
+  config_password=$(gen_random_string 18)
+  config_webBasePath=$(gen_random_string 18)
 
 
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)" @ config_after_install
+  ${xui_folder}/x-ui setting -username "${config_account}" -password "${config_password}" -resetTwoFactor false >/dev/null 2>
+  ${xui_folder}/x-ui setting -webBasePath "${config_webBasePath}" >/dev/null 2>&1
 
+  echo -e "Panel login username: ${config_account}"
+  echo -e "Panel login password: ${config_password}"
+  echo -e "Web base path: ${config_webBasePath}"
+
+  ${xui_folder}/x-ui settings -y
 
   # read -r -p "PORT: " XUI_PORT
   # read -r -p "USER: " XUI_USER
