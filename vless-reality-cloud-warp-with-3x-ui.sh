@@ -1,49 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INFO="[INFO]"
-WARN="[WARN]"
-ERROR="[ERROR]"
-
-XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="yahoo.com"
-
-# --- helpers ---------------------------------------------------------------
-
-die() { echo "$ERROR $*" >&2; exit 1; }
-log() { echo "$INFO $*"; }
-warn() { echo "$WARN $*" >&2; }
-
-require_root() {
-  [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
-}
-
-default_iface() {
-  ip route show default 2>/dev/null | awk '{print $5; exit}'
-}
-
-resolve_ipv4() {
-  getent ahostsv4 "$1" 2>/dev/null | awk '{print $1; exit}'
-}
-
-restart_firewall_service_if_any() {
-  if systemctl list-unit-files | grep -q '^netfilter-persistent\.service'; then
-    systemctl restart netfilter-persistent || true
-  elif systemctl list-unit-files | grep -q '^iptables\.service'; then
-    systemctl restart iptables || true
-  elif command -v netfilter-persistent >/dev/null 2>&1; then
-    netfilter-persistent reload || true
-  fi
-}
-
-iptables_add_once() {
-  local table="$1"; shift
-  local chain="$1"; shift
-  iptables -t "$table" -C "$chain" "$@" 2>/dev/null || \
-  iptables -t "$table" -A "$chain" "$@"
-}
-
-# --- sysctl ----------------------------------------------------------------
 
 apply_sysctl() {
   log "Applying sysctl"
@@ -83,171 +41,6 @@ EOF
   sysctl --system >/dev/null
 }
 
-# --- xray config ------------------------------------------------------------
-
-set_xray_config() {
-  local keys_file="/usr/local/etc/xray/.keys"
-  [[ -f "$keys_file" ]] || die "Keys file not found: $keys_file"
-
-  local UUID XRAY_PRIV XRAY_SHORT_IDS
-  UUID="$(awk -F': ' '/uuid/ {print $2; exit}' "$keys_file")"
-  XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$keys_file")"
-  XRAY_SHORT_IDS="$(awk -F': ' '/shortsid/ {print $2; exit}' "$keys_file")"
-
-  [[ -n "$UUID" && -n "$XRAY_PRIV" && -n "$XRAY_SHORT_IDS" ]] || die "Failed to read keys"
-
-  log "Registering WARP"
-  local WARP_INFO
-  WARP_INFO="$(bash -c "$(curl -fsSL warp-reg.vercel.app)")"
-
-  local WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
-  WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
-  WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
-  WARP_V6="$(jq -r '.v6' <<<"$WARP_INFO")"
-  WARP_RESERVED="$(jq -r '.reserved_str' <<<"$WARP_INFO")"
-
-  local LISTEN_IP
-  LISTEN_IP="$(hostname -I | awk '{print $1}')"
-
-  cat >"$XRAY_PATH_CONFIG" <<EOF
-{
-  "log": { "loglevel": "info" },
-
-  "api": {
-    "services": ["HandlerService", "LoggerService", "StatsService"],
-    "tag": "api"
-  },
-  "stats": {},
-
-  "inbounds": [
-    {
-      "listen": "127.0.0.1",
-      "port": 10085,
-      "protocol": "dokodemo-door",
-      "settings": { "address": "127.0.0.1" },
-      "tag": "api"
-    },
-    {
-      "listen": "$LISTEN_IP",
-      "port": 443,
-      "protocol": "vless",
-      "tag": "reality-in",
-      "settings": {
-        "decryption": "none",
-        "encryption": "none",
-        "clients": [
-          { "id": "$UUID", "email": "main", "flow": "xtls-rprx-vision" }
-        ]
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "$MASK_DOMAIN:443",
-          "serverNames": ["$MASK_DOMAIN"],
-          "privateKey": "$XRAY_PRIV",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 0,
-          "shortIds": ["$XRAY_SHORT_IDS"]
-        }
-      },
-      "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
-    },
-    {
-      "tag": "Shadowsocks TCP",
-      "listen": "0.0.0.0",
-      "port": 1080,
-      "protocol": "shadowsocks",
-      "settings": {
-        "clients": [],
-        "network": "tcp,udp"
-      }
-    }
-  ],
-
-  "outbounds": [
-    { "protocol": "freedom", "tag": "direct" },
-    { "protocol": "blackhole", "tag": "block" },
-    {
-      "protocol": "wireguard",
-      "tag": "warp",
-      "settings": {
-        "secretKey": "$WARP_PRIV",
-        "address": ["172.16.0.2/32", "$WARP_V6/128"],
-        "peers": [
-          {
-            "endpoint" : "engage.cloudflareclient.com:2408",
-            "allowedIPs": ["0.0.0.0/0", "::/0"],
-            "publicKey": "$WARP_PUB"
-          }
-        ],
-        "mtu": 1280,
-        "reserved": "$WARP_RESERVED",
-        "workers": 2,
-        "domainStrategy": "ForceIP"
-      }
-    }
-  ],
-
-  "routing": {
-    "rules": [
-      {"type": "field", "protocol": "bittorrent", "outboundTag": "block"},
-      {
-        "domain": ["geosite:category-ads-all", "geosite:win-spy"],
-        "outboundTag": "block"
-      },
-      {
-        "type": "field",
-        "domain": [
-          "geosite:openai",      "geosite:category-ru", "geosite:private",
-          "domain:ru",           "domain:su",           "domain:by",
-          "domain:xn--p1ai"
-        ],
-        "outboundTag": "warp"
-      },
-      {
-        "type": "field",
-        "ip": ["geoip:ru", "geoip:private"],
-        "outboundTag": "warp"
-      }
-    ]
-  }
-}
-EOF
-}
-
-set_protocols_forwarding() {
-  log "Set protocols forwarding"
-
-  local ip face
-  ip="$(resolve_ipv4 "$MASK_DOMAIN")"
-  face="$(default_iface)"
-
-  iptables_add_once nat PREROUTING -i "$face" -p udp --dport 443 -j DNAT --to "$ip:443"
-  iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
-
-  netfilter-persistent save || true
-  restart_firewall_service_if_any
-}
-
-install_xray() {
-  log "Installing Xray"
-  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-
-  local keys_file="/usr/local/etc/xray/.keys"
-  {
-    echo "shortsid: $(openssl rand -hex 8)"
-    echo "uuid: $(xray uuid)"
-    xray x25519
-  } > "$keys_file"
-}
-
-export DOMAIN=$(hostname)
-
-# --- main ------------------------------------------------------------------
-
 
 gen_random_string() {
     local length="$1"
@@ -260,7 +53,7 @@ main() {
   require_root
 
   apt update
-  apt install -y iptables iptables-persistent curl jq openssl
+  apt install -y jq openssl
 
   ARCH=$(uname -m)
   case "${ARCH}" in
@@ -451,45 +244,57 @@ JSON
   local LISTEN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [[ -n "$LISTEN_IP" ]] || LISTEN_IP="0.0.0.0"
 
-  local SHORD_IDS="$(openssl rand -hex 8)"
+  local SHORT_ID="$(openssl rand -hex 8)"
 
-  local BODY="$(jq -n \ 
+  XRAY_PRIV="$(
+    curl -sSk -L \
+      -b "$JAR" -c "$JAR" \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -X GET "https://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
+    | jq -r '.obj.privateKey'
+  )"
+  
+
+  local BODY="$(jq -n \
     --arg mask_domain "$MASK_DOMAIN" \
     --arg xray_priv "$XRAY_PRIV" \
     --arg listen_ip "$LISTEN_IP" \
-    --arg short_ids "$SHORD_IDS" \
-      '{
-        up: 0,
-        down: 0,
-        total: 0,
-        remark: "",
-        enable: true,
-        expiryTime: 0,
-        listen: "$listen_ip",
-        port: 443,
-        protocol: "vless",
-        settings: {},
-        streamSettings: {
-          network: "tcp",
-          security: "reality",
-          realitySettings: {
-            show: false,
-            dest: ($mask_domain + ":443"),
-            serverNames: [$mask_domain],
-            privateKey: $xray_priv,
-            shortIds: [$short_ids]
-          }
-        },
-        sniffing: {
-          enabled: true,
-          destOverride: ["http","tls","quic"]
+    --arg short_id "$SHORT_ID" \
+    '{
+      up: 0,
+      down: 0,
+      total: 0,
+      remark: "",
+      enable: true,
+      expiryTime: 0,
+      listen: $listen_ip,
+      port: 443,
+      protocol: "vless",
+      settings: {
+        decryption: "none",
+        encryption: "none"
+      },
+      streamSettings: {
+        network: "tcp",
+        security: "reality",
+        realitySettings: {
+          show: false,
+          dest: ($mask_domain + ":443"),
+          serverNames: [$mask_domain],
+          privateKey: $xray_priv,
+          shortIds: [$short_id]
         }
-      }'
-  
+      },
+      sniffing: {
+        enabled: true,
+        destOverride: ["http","tls","quic"]
+      }
+    }'
   )"
-
-  curl -sSk -L "https://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
-    -c "$JAR" \
+  
+  curl -sSk -L -X POST "https://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+    -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY"
