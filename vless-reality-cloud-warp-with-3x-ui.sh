@@ -287,7 +287,7 @@ main() {
   cp x-ui/x-ui.sh /usr/bin/x-ui
 
 
-  cat >"/usr/local/x-ui/config.json" <<'JSON'
+  cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 {
   "api": {
     "services": [
