@@ -310,7 +310,7 @@ JSON
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
-  echo -e "https://$(hostname -I | awk '{print $1}'):$XUI_PORT/$XUI_PATH"
+  echo -e "https://$LISTEN_IP:$XUI_PORT/$XUI_PATH"
 }
 
 main
