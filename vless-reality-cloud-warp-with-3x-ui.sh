@@ -412,6 +412,9 @@ systemctl enable x-ui
 systemctl restart x-ui
 
 
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)" @ config_after_install
+
+
   # read -r -p "PORT: " XUI_PORT
   # read -r -p "USER: " XUI_USER
   # read -r -p "PATH: " XUI_PATH
