@@ -300,6 +300,8 @@ JSON
   
   local resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
+    --connect-timeout 5 \
+    --max-time 10 \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY")
