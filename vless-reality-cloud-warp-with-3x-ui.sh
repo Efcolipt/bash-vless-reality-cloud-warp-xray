@@ -2,7 +2,10 @@
 set -euo pipefail
 
 require_root() {
-  [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] || {
+    echo "Please run this script with root privilege" >&2
+    exit 1
+  }
 }
 
 apply_sysctl() {
@@ -224,7 +227,7 @@ JSON
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
 
   echo -e "Panel login username: ${XUI_USER}"
-  echo -e "Panel login password: ${config_XUI_PASSWORDpassword}"
+  echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
   echo -e "Web base path: ${XUI_PATH}"
 
@@ -274,10 +277,7 @@ JSON
       listen: $listen_ip,
       port: 443,
       protocol: "vless",
-      settings: {
-        decryption: "none",
-        encryption: "none"
-      },
+      settings: {},
       streamSettings: {
         network: "tcp",
         security: "reality",
