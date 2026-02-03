@@ -74,6 +74,10 @@ main() {
   apt update
   apt install -y jq openssl
 
+  x-ui uinstall 2>/dev/null
+  rm -rf /usr/local/x-ui
+  rm -f /usr/bin/x-ui
+
   ARCH=$(uname -m)
   case "${ARCH}" in
     x86_64 | x64 | amd64) XUI_ARCH="amd64" ;;
