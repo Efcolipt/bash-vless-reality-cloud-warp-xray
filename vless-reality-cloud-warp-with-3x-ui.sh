@@ -249,7 +249,7 @@ JSON
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"))
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")
 
   echo "$resp" 
 
@@ -257,7 +257,7 @@ JSON
     -c "$JAR" \
     -H "Content-Type: application/json" \
     -X POST "http://localhost:$XUI_PORT/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"))
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")
 
   echo "$resp" 
 
