@@ -74,14 +74,7 @@ main() {
   apt update
   apt install -y jq openssl
 
-  systemctl stop x-ui || true
-  systemctl disable x-ui || true
-
-  rm -rf /usr/local/x-ui
-  rm -f /usr/bin/x-ui
-
-  rm -f /etc/systemd/system/x-ui.service
-  systemctl daemon-reload
+  x-ui uninstall -y
 
   ARCH=$(uname -m)
   case "${ARCH}" in
