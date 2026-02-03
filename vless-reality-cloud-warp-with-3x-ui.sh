@@ -226,11 +226,6 @@ JSON
 
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
 
-  echo -e "Panel login username: ${XUI_USER}"
-  echo -e "Panel login password: ${XUI_PASSWORD}"
-  echo -e "Web Base port: ${XUI_PORT}"
-  echo -e "Web base path: ${XUI_PATH}"
-  
   JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
 
@@ -240,7 +235,7 @@ JSON
     --connect-timeout 5 \
     --max-time 10 \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/$XUI_PATH/login" \
+    -X POST "http://localhost:$XUI_PORT/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}")"
 
   echo "$resp" 
@@ -259,7 +254,7 @@ JSON
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/$XUI_PATH/api/server/getNewX25519Cert" \
+      -X GET "http://localhost:$XUI_PORT/api/server/getNewX25519Cert" \
     | jq -r '.obj.privateKey'
   )"
   
@@ -298,7 +293,7 @@ JSON
     }'
   )"
   
-  local resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_PATH/api/inbounds/add" \
+  local resp=$(curl -sSk -L -X POST "http://localhost:$XUI_PORT/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --connect-timeout 5 \
     --max-time 10 \
@@ -310,6 +305,10 @@ JSON
 
   systemctl restart x-ui
 
+  echo -e "Panel login username: ${XUI_USER}"
+  echo -e "Panel login password: ${XUI_PASSWORD}"
+  echo -e "Web Base port: ${XUI_PORT}"
+  echo -e "https://$(hostname -I | awk '{print $1}'):$XUI_PORT/$XUI_PATH"
 }
 
 main
