@@ -237,7 +237,7 @@ JSON
   local XUI_PATH=$(gen_random_string 18)
   local XUI_PORT=$(shuf -i 1024-62000 -n 1)
 
-  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
+  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"
 
   "$XUI_FOLDER/x-ui migrate"
 
