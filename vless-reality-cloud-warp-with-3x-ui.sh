@@ -232,7 +232,7 @@ JSON
   echo -e "Web base path: ${XUI_PATH}"
 
   if [[ -z "$IS_EXIST_CERT" ]]; then
-    x-ui settings
+    x-ui settings -y
   fi
 
   
