@@ -105,64 +105,6 @@ main() {
   rm -rf x-ui/ /usr/local/x-ui/ /usr/bin/x-ui
   tar zxvf x-ui-linux-${XUI_ARCH}.tar.gz
   chmod +x x-ui/x-ui x-ui/bin/xray-linux-* x-ui/x-ui.sh
-
-cat >"x-ui/bin/config.json" <<'JSON'
-{
-  "api": {
-    "services": ["HandlerService", "LoggerService", "StatsService"],
-    "tag": "api"
-  },
-  "inbounds": [
-    {
-      "listen": "127.0.0.1",
-      "port": 62789,
-      "protocol": "tunnel",
-      "settings": {"address": "127.0.0.1"},
-      "tag": "api"
-    }
-  ],
-  "log": {"dnsLog": true, "error": "", "loglevel": "info", "maskAddress": ""},
-  "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
-  "outbounds": [
-    {"protocol": "freedom",   "tag": "direct"                 },
-    {"protocol": "blackhole", "tag": "blocked", "settings": {}}
-  ],
-  "policy": {
-    "levels": { "0": {"statsUserDownlink": true, "statsUserUplink": true} },
-    "system": {
-      "statsInboundDownlink" : true,
-      "statsInboundUplink"   : true,
-      "statsOutboundDownlink": false,
-      "statsOutboundUplink"  : false
-    }
-  },
-  "routing": {
-    "domainStrategy": "IPIfNonMatch",
-    "rules": [
-      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
-      {
-        "type": "field",
-        "outboundTag": "blocked",
-        "protocol": ["bittorrent"],
-        "domain": ["geosite:category-ads-all", "geosite:win-spy"]
-      },
-      {
-        "type": "field",
-        "outboundTag": "warp",
-        "ip": ["ext:geoip_RU.dat:ru", "geoip:private"],
-        "domain": [
-          "regexp:.*\\.su$",
-          "regexp:.*\\.ru$",
-          "regexp:.*\\.by$",
-          "ext:geosite_RU.dat:ru-available-only-inside",
-          "regexp:.*\\.xn--p1ai$"
-        ]
-      }
-    ]
-  },
-  "stats": {}
-}
-JSON
   cp x-ui/x-ui.sh /usr/bin/x-ui
 
 
@@ -229,6 +171,80 @@ mv x-ui/ /usr/local/
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewX25519Cert"
+  )"
+
+
+  local INIT_CONFIG="$(
+      jq -n '
+        {
+          "api": {
+            "services": ["HandlerService", "LoggerService", "StatsService"],
+            "tag": "api"
+          },
+          "inbounds": [
+            {
+              "listen": "127.0.0.1",
+              "port": 62789,
+              "protocol": "tunnel",
+              "settings": {"address": "127.0.0.1"},
+              "tag": "api"
+            }
+          ],
+          "log": {"dnsLog": true, "error": "", "loglevel": "info", "maskAddress": ""},
+          "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
+          "outbounds": [
+            {"protocol": "freedom",   "tag": "direct"                 },
+            {"protocol": "blackhole", "tag": "blocked", "settings": {}}
+          ],
+          "policy": {
+            "levels": { "0": {"statsUserDownlink": true, "statsUserUplink": true} },
+            "system": {
+              "statsInboundDownlink" : true,
+              "statsInboundUplink"   : true,
+              "statsOutboundDownlink": false,
+              "statsOutboundUplink"  : false
+            }
+          },
+          "routing": {
+            "domainStrategy": "IPIfNonMatch",
+            "rules": [
+              { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
+              {
+                "type": "field",
+                "outboundTag": "blocked",
+                "protocol": ["bittorrent"],
+                "domain": ["geosite:category-ads-all", "geosite:win-spy"]
+              },
+              {
+                "type": "field",
+                "outboundTag": "warp",
+                "ip": ["ext:geoip_RU.dat:ru", "geoip:private"],
+                "domain": [
+                  "regexp:.*\\.su$",
+                  "regexp:.*\\.ru$",
+                  "regexp:.*\\.by$",
+                  "ext:geosite_RU.dat:ru-available-only-inside",
+                  "regexp:.*\\.xn--p1ai$"
+                ]
+              }
+            ]
+          },
+          "stats": {}
+        }
+      '
+  )"
+
+
+
+  local resp="$(
+    curl -sSk -L \
+      -b "$JAR" -c "$JAR" \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      --data-urlencode "xraySetting=$INIT_CONFIG" \
+      -X POST "http://localhost:$XUI_PORT/panel/xray/update"\
+      
+
   )"
 
 
