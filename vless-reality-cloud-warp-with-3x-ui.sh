@@ -46,6 +46,19 @@ EOF
   sysctl --system >/dev/null
 }
 
+wait_for_port() {
+  local port="$1"
+  for i in {1..30}; do
+    if ss -lnt | awk '{print $4}' | grep -q ":$port$"; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "❌ x-ui did not open port $port" >&2
+  systemctl status x-ui --no-pager >&2 || true
+  exit 1
+}
+
 
 gen_random_string() {
     local length="$1"
@@ -227,6 +240,8 @@ JSON
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false -webBasePath "$XUI_PATH"  >/dev/null
 
   systemctl restart x-ui
+
+  wait_for_port "$XUI_PORT"
   
   JAR="$(mktemp)"
   trap 'rm -f "$JAR"' EXIT
