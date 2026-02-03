@@ -287,28 +287,7 @@ main() {
   cp x-ui/x-ui.sh /usr/bin/x-ui
 
 
-  read -r -p "PORT: " XUI_PORT
-  read -r -p "USER: " XUI_USER
-  read -r -p "PATH: " XUI_PATH
-  read -r -s -p "PASSWORD: " XUI_PASSWORD
-  echo
-
-  JAR="$(mktemp)"
-  trap 'rm -f "$JAR"' EXIT
-
-
-  curl -sSk -L \
-    -c "$JAR" \
-    -H "Content-Type: application/json" \
-    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
-    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
-
-
-
-CFG_FILE="$(mktemp)"
-trap 'rm -f "$JAR" "$CFG_FILE"' EXIT
-
-cat >"$CFG_FILE" <<'JSON'
+  cat >"/usr/local/x-ui/config.json" <<'JSON'
 {
   "api": {
     "services": [
@@ -406,11 +385,22 @@ cat >"$CFG_FILE" <<'JSON'
 }
 JSON
 
+
+  read -r -p "PORT: " XUI_PORT
+  read -r -p "USER: " XUI_USER
+  read -r -p "PATH: " XUI_PATH
+  read -r -s -p "PASSWORD: " XUI_PASSWORD
+  echo
+
+  JAR="$(mktemp)"
+  trap 'rm -f "$JAR"' EXIT
+
+
   curl -sSk -L \
     -c "$JAR" \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/panel/xray/update" \
-    --data-urlencode "xraySetting=$XUI_USER"
+    -H "Content-Type: application/json" \
+    -X POST "https://localhost:$XUI_PORT/$XUI_PATH/login" \
+    --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 
   log "DONE"
 }
