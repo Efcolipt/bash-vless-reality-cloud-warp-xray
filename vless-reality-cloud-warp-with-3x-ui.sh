@@ -130,6 +130,9 @@ fi
 
 mv x-ui/ /usr/local/
 
+systemctl daemon-reload
+systemctl enable x-ui
+
 cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 {
   "api": {
@@ -188,10 +191,8 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 }
 JSON
 
-cat /usr/local/x-ui/bin/config.json
+  cat /usr/local/x-ui/bin/config.json
 
-  systemctl daemon-reload
-  systemctl enable x-ui
   systemctl restart x-ui
 
   local XUI_FOLDER="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
