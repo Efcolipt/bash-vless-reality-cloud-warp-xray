@@ -282,8 +282,9 @@ JSON
     }'
   )"
 
-  local PRIVATE_KEY="$($X25519_KEYS | jq -r '.obj.privateKey')"
-  local PUBLIC_KEY="$($X25519_KEYS | jq -r '.obj.publicKey')"
+  local PRIVATE_KEY="$(jq -r '.obj.privateKey' <<<"$X25519_KEYS")"
+  local PUBLIC_KEY="$(jq -r '.obj.publicKey'  <<<"$X25519_KEYS")"
+
   local STREAM_SETTINGS="$(jq -cn \
     --arg mask_domain "$MASK_DOMAIN" \
     --arg xray_priv "$PRIVATE_KEY" \
@@ -321,7 +322,7 @@ JSON
   local SETTINGS="$(jq -cn \
     --arg uuid "$UUID" \
     --arg email "$(gen_random_string 10)" \
-    --arg email "$(gen_random_string 10)" \
+    --arg sub_id "$(gen_random_string 18)" \
     '{
       decryption: "none",  
       encryption: "none",  
@@ -329,13 +330,13 @@ JSON
         {
           id: $uuid,
           flow: "xtls-rprx-vision",
-          email: "1juhn5b0z",
+          email: $email,
           limitIp: 0,
           totalGB: 0,
           expiryTime: 0,
           enable: true,
           tgId: "",
-          subId: "44444",
+          subId: $sub_id,
           comment: "",
           reset: 0
         } 
