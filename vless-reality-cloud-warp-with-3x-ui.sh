@@ -426,8 +426,8 @@ JSON
   config_webBasePath=$(gen_random_string 18)
 
 
-  ${xui_folder}/x-ui setting -username "${config_account}" -password "${config_password}" -resetTwoFactor false >/dev/null 2>
-  ${xui_folder}/x-ui setting -webBasePath "${config_webBasePath}" >/dev/null 2>&1
+  "${xui_folder}/x-ui" setting -username "${config_account}" -password "${config_password}" -resetTwoFactor false >/dev/null 2>&1
+  "${xui_folder}/x-ui" setting -webBasePath "${config_webBasePath}" >/dev/null 2>&1
 
   echo -e "Panel login username: ${config_account}"
   echo -e "Panel login password: ${config_password}"
