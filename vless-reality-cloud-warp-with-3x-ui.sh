@@ -265,16 +265,14 @@ JSON
   local SHORT_ID="$(openssl rand -hex 8)"
 
   local MASK_DOMAIN="yahoo.com"
-  local PRIVATE_KEY="$(
+
+  local X25519_KEYS="$(
     curl -sSk -L \
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewX25519Cert" \
-    | jq -r '.obj.privateKey'
+      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewX25519Cert"
   )"
-
-  echo "$PRIVATE_KEY" 
 
 
   local SNIFFING="$(jq -cn \
@@ -284,27 +282,72 @@ JSON
     }'
   )"
 
+  local PRIVATE_KEY="$($X25519_KEYS | jq -r '.obj.privateKey')"
+  local PUBLIC_KEY="$($X25519_KEYS | jq -r '.obj.publicKey')"
   local STREAM_SETTINGS="$(jq -cn \
-  --arg mask_domain "$MASK_DOMAIN" \
-  --arg xray_priv "$PRIVATE_KEY" \
-  --arg short_id "$SHORT_ID" \
-  '{
-    network: "tcp",
-    security: "reality",
-    realitySettings: {
-      show: false,
-      dest: ($mask_domain + ":443"),
-      serverNames: [$mask_domain],
-      privateKey: $xray_priv,
-      shortIds: [$short_id]
-    }
-  }'
-)"
+    --arg mask_domain "$MASK_DOMAIN" \
+    --arg xray_priv "$PRIVATE_KEY" \
+    --arg xray_pub "$PUBLIC_KEY" \
+    --arg short_id "$SHORT_ID" \
+    '{
+      network: "tcp",
+      security: "reality",
+      realitySettings: {
+        show: false,
+        target: ($mask_domain + ":443"),
+        serverNames: [$mask_domain],
+        privateKey: $xray_priv,
+        shortIds: [$short_id],
+        "settings": {
+          "publicKey"    : $xray_pub,
+          "fingerprint"  : "chrome",
+          "serverName"   : "",
+          "spiderX"      : "/",
+          "mldsa65Verify": ""
+        }
+      }
+    }'
+  )"
+
+  local UUID="$(
+    curl -sSk -L \
+      -b "$JAR" -c "$JAR" \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewUUID" \
+      | jq -r '.obj.uuid'
+  )"
+
+  local SETTINGS="$(jq -cn \
+    --arg uuid "$UUID" \
+    --arg email "$(gen_random_string 10)" \
+    --arg email "$(gen_random_string 10)" \
+    '{
+      decryption: "none",  
+      encryption: "none",  
+      "clients":[ 
+        {
+          id: $uuid,
+          flow: "xtls-rprx-vision",
+          email: "1juhn5b0z",
+          limitIp: 0,
+          totalGB: 0,
+          expiryTime: 0,
+          enable: true,
+          tgId: "",
+          subId: "44444",
+          comment: "",
+          reset: 0
+        } 
+      ]
+    }'
+  )"
 
   local BODY="$(jq -n \
     --arg listen_ip "$LISTEN_IP" \
     --arg streamSettings "$STREAM_SETTINGS" \
     --arg sniffing "$SNIFFING" \
+    --arg settings "$SETTINGS" \
     '{
       up: 0,
       down: 0,
@@ -315,7 +358,7 @@ JSON
       listen: $listen_ip,
       port: 443,
       protocol: "vless",
-      settings: "{ \"decryption\": \"none\",  \"encryption\": \"none\",  \"clients\":[]}",
+      settings: $settings,
       streamSettings: $streamSettings,
       sniffing: $sniffing
     }'
