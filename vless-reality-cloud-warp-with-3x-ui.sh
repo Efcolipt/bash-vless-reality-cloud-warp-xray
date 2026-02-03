@@ -8,6 +8,8 @@ require_root() {
   }
 }
 
+log() { echo "[LOG] $*"; }
+
 apply_sysctl() {
   log "Applying sysctl"
 
@@ -66,7 +68,6 @@ gen_random_string() {
     echo "$random_string"
 }
 
-log() { echo "[LOG] $*"; }
 
 main() {
   require_root
@@ -186,6 +187,8 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
   "stats": {}
 }
 JSON
+
+cat /usr/local/x-ui/bin/config.json
 
   systemctl daemon-reload
   systemctl enable x-ui
