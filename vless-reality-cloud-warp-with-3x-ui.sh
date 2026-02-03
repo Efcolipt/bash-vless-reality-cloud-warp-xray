@@ -407,6 +407,10 @@ cat >"/usr/local/x-ui/bin/config.json" <<'JSON'
 }
 JSON
 
+systemctl daemon-reload
+systemctl enable x-ui
+systemctl restart x-ui
+
 
   read -r -p "PORT: " XUI_PORT
   read -r -p "USER: " XUI_USER
