@@ -435,6 +435,7 @@ JSON
 
   if [[ -z "$IS_EXIST_CERT" ]]; then
     x-ui settings
+  fi
 
   
   JAR="$(mktemp)"
