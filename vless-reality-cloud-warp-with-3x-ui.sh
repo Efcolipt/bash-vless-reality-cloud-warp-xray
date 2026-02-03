@@ -298,9 +298,6 @@ JSON
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY"
-  
-
-  log "DONE"
 }
 
 main
