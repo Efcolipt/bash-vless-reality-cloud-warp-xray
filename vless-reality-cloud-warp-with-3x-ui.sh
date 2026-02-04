@@ -293,8 +293,7 @@ update_xray_config() {
                 "type": "field",
                 "outboundTag": "blocked",
                 "domain": [
-                  "geosite:category-ads-all",
-                  "geosite:win-spy"
+                  "geosite:category-ads-all"
                 ]
               },
               {
