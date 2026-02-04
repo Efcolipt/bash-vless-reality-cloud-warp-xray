@@ -241,7 +241,15 @@ update_xray_config() {
           "log": {"dnsLog": false, "error": "", "loglevel": "error", "maskAddress": ""},
           "metrics": {"listen": "127.0.0.1:11111", "tag": "metrics_out"},
           "outbounds": [
-            {"protocol": "freedom",   "tag": "direct"                 },
+            {
+              "protocol": "freedom",
+              "settings": {
+                "domainStrategy": "AsIs",
+                "noises": [],
+                "redirect": ""
+              },
+              "tag": "direct"
+            },
             {"protocol": "blackhole", "tag": "blocked", "settings": {}},
             {
               "protocol": "wireguard",
@@ -256,7 +264,7 @@ update_xray_config() {
                     "publicKey": $warp_pub
                   }
                 ],
-                "mtu": 1280,
+                "mtu": 1420,
                 "reserved": $warp_res,
                 "workers": 2,
                 "domainStrategy": "ForceIP"
@@ -283,6 +291,13 @@ update_xray_config() {
                 "type": "field"
               },
               {
+                "ip": [
+                  "geoip:private"
+                ],
+                "outboundTag": "blocked",
+                "type": "field"
+              },
+              {
                 "type": "field",
                 "outboundTag": "blocked",
                 "protocol": [
@@ -301,10 +316,10 @@ update_xray_config() {
                 "outboundTag": "warp",
                 "domain": [
                   "geosite:openai",
+                  "ext:geosite_RU.dat:ru-available-only-inside",
                   "regexp:.*\\.su$",
                   "regexp:.*\\.ru$",
                   "regexp:.*\\.by$",
-                  "ext:geosite_RU.dat:ru-available-only-inside",
                   "regexp:.*\\.xn--p1ai$"
                 ]
               },
@@ -343,7 +358,6 @@ add_vless_reality_inbound() {
   PUBLIC_KEY="$(jq -r '.obj.publicKey'  <<<"$X25519_KEYS")"
 
   SHORT_ID="$(openssl rand -hex 8)"
-  MASK_DOMAIN="yahoo.com"
 
   STREAM_SETTINGS="$(jq -cn \
     --arg mask_domain "$MASK_DOMAIN" \
@@ -440,6 +454,8 @@ add_vless_reality_inbound() {
 #######################################
 main() {
   require_root
+  read -p "Enter mask site(sni): " MASK_DOMAIN
+
   install_deps
 
   XUI_ARCH="$(detect_xui_arch)"
