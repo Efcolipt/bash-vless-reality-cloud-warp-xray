@@ -167,9 +167,10 @@ setup_panel_credentials() {
   XUI_USER="$(gen_random_string 10)"
   XUI_PASSWORD="$(gen_random_string 18)"
   XUI_PORT="$(shuf -i 1024-62000 -n 1)"
+  XUI_BASE_PATH="$(gen_random_string 10)"
 
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false
-  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false
+  "$XUI_FOLDER/x-ui" setting -webBasePath "$XUI_BASE_PATH"
 
   systemctl restart x-ui
   wait_for_port "$XUI_PORT"
@@ -182,7 +183,7 @@ panel_login_cookiejar() {
   curl -sSk -L \
     -c "$JAR" \
     -H "Content-Type: application/json" \
-    -X POST "http://localhost:$XUI_PORT/login" \
+    -X POST "http://localhost:$XUI_PORT/$XUI_BASE_PATH/login" \
     --data "{\"username\":\"$XUI_USER\",\"password\":\"$XUI_PASSWORD\",\"twoFactorCode\":\"\"}"
 }
 
@@ -200,7 +201,7 @@ fetch_x25519_keys() {
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewX25519Cert"
+      -X GET "http://localhost:$XUI_PORT/$XUI_BASE_PATH/panel/api/server/getNewX25519Cert"
   )"
 }
 
@@ -310,7 +311,7 @@ update_xray_config() {
     -H 'Accept: application/json' \
     -H 'Content-Type: application/x-www-form-urlencoded' \
     --data-urlencode "xraySetting=$INIT_CONFIG" \
-    -X POST "http://localhost:$XUI_PORT/panel/xray/update"
+    -X POST "http://localhost:$XUI_PORT/$XUI_BASE_PATH/panel/xray/update"
 }
 
 add_vless_reality_inbound() {
@@ -357,7 +358,7 @@ add_vless_reality_inbound() {
       -b "$JAR" -c "$JAR" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X GET "http://localhost:$XUI_PORT/panel/api/server/getNewUUID" \
+      -X GET "http://localhost:$XUI_PORT/$XUI_BASE_PATH/panel/api/server/getNewUUID" \
       | jq -r '.obj.uuid'
   )"
 
@@ -407,7 +408,7 @@ add_vless_reality_inbound() {
     }'
   )"
 
-  curl -sSk -L -X POST "http://localhost:$XUI_PORT/panel/api/inbounds/add" \
+  curl -sSk -L -X POST "http://localhost:$XUI_PORT/$XUI_BASE_PATH/panel/api/inbounds/add" \
     -b "$JAR" -c "$JAR" \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
@@ -443,7 +444,7 @@ main() {
   echo -e "Panel login username: ${XUI_USER}"
   echo -e "Panel login password: ${XUI_PASSWORD}"
   echo -e "Web Base port: ${XUI_PORT}"
-  echo -e "http://$LISTEN_IP:$XUI_PORT"
+  echo -e "https://$LISTEN_IP:$XUI_PORT/$XUI_BASE_PATH"
 }
 
 main
