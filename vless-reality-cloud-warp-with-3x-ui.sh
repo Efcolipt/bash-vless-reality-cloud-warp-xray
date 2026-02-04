@@ -377,6 +377,8 @@ add_vless_reality_inbound() {
       | jq -r '.obj.uuid'
   )"
 
+  echo "UUID $UUID"
+
   SETTINGS="$(jq -cn \
     --arg uuid "$UUID" \
     --arg email "$(gen_random_string 10)" \
