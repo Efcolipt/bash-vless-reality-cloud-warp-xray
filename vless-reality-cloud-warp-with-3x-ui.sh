@@ -314,6 +314,7 @@ update_xray_config() {
                 ]
               },
               {
+                "type": "field",
                 "ip": [
                   "geoip:private"
                 ],
