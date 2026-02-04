@@ -217,6 +217,7 @@ register_warp() {
 }
 
 update_xray_config() {
+  log "update_xray_config"
   INIT_CONFIG="$(
     jq -cn \
       --arg warp_priv "$WARP_PRIV" \
@@ -327,9 +328,11 @@ update_xray_config() {
     -H 'Content-Type: application/x-www-form-urlencoded' \
     --data-urlencode "xraySetting=$INIT_CONFIG" \
     -X POST "http://localhost:$XUI_PORT/$XUI_BASE_PATH/panel/xray/update"
+  log "end update_xray_config"
 }
 
 add_vless_reality_inbound() {
+  log "add_vless_reality_inbound"
   SNIFFING="$(jq -cn \
     '{
       enabled: true,
@@ -430,6 +433,7 @@ add_vless_reality_inbound() {
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
     --data "$BODY"
+  log "end add_vless_reality_inbound"
 }
 
 #######################################
