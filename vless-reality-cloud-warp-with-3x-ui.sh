@@ -226,15 +226,6 @@ update_xray_config() {
             "services": ["HandlerService", "LoggerService", "StatsService"],
             "tag": "api"
           },
-          "dns": {
-            "servers": [
-              "https+local://8.8.4.4/dns-query",
-              "https+local://8.8.8.8/dns-query",
-              "https+local://1.1.1.1/dns-query",
-              "localhost"
-            ],
-            "queryStrategy": "UseIPv4"
-          },
           "inbounds": [
             {
               "listen": "127.0.0.1",
@@ -281,23 +272,45 @@ update_xray_config() {
           "routing": {
             "domainStrategy": "IPIfNonMatch",
             "rules": [
-              { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
+              {
+                "inboundTag": [
+                  "api"
+                ],
+                "outboundTag": "api",
+                "type": "field"
+              },
               {
                 "type": "field",
                 "outboundTag": "blocked",
-                "protocol": ["bittorrent"],
-                "domain": ["geosite:category-ads-all", "geosite:win-spy"]
+                "protocol": [
+                  "bittorrent"
+                ]
+              },
+              {
+                "type": "field",
+                "outboundTag": "blocked",
+                "domain": [
+                  "geosite:category-ads-all",
+                  "geosite:win-spy"
+                ]
               },
               {
                 "type": "field",
                 "outboundTag": "warp",
-                "ip": ["ext:geoip_RU.dat:ru", "geoip:private"],
                 "domain": [
+                  "geosite:openai",
                   "regexp:.*\\.su$",
                   "regexp:.*\\.ru$",
                   "regexp:.*\\.by$",
                   "ext:geosite_RU.dat:ru-available-only-inside",
                   "regexp:.*\\.xn--p1ai$"
+                ]
+              },
+              {
+                "type": "field",
+                "outboundTag": "warp",
+                "ip": [
+                  "ext:geoip_RU.dat:ru",
                 ]
               }
             ]
