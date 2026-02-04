@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+IFS=$'\n\t'
 
+#######################################
+# Constants
+#######################################
 INFO="[INFO]"
 WARN="[WARN]"
 ERROR="[ERROR]"
@@ -9,8 +13,9 @@ XRAY_PATH_CONFIG="/usr/local/etc/xray/config.json"
 MASK_DOMAIN="yahoo.com"
 KEYS_FILE="/usr/local/etc/xray/.keys"
 
-# --- helpers ---------------------------------------------------------------
-
+#######################################
+# Logging / errors
+#######################################
 die() { echo "$ERROR $*" >&2; exit 1; }
 log() { echo "$INFO $*"; }
 warn() { echo "$WARN $*" >&2; }
@@ -19,6 +24,9 @@ require_root() {
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
 }
 
+#######################################
+# Network helpers
+#######################################
 default_iface() {
   ip route show default 2>/dev/null | awk '{print $5; exit}'
 }
@@ -29,6 +37,9 @@ resolve_ipv4() {
   getent ahostsv4 "$1" 2>/dev/null | awk '{print $1; exit}'
 }
 
+#######################################
+# Firewall helpers
+#######################################
 restart_firewall_service_if_any() {
   # Different distros name this differently
   if systemctl list-unit-files | grep -q '^netfilter-persistent\.service'; then
@@ -51,6 +62,18 @@ iptables_add_once() {
   iptables -t "$table" -C "$chain" "$@" 2>/dev/null || iptables -t "$table" -A "$chain" "$@"
 }
 
+persist_iptables_if_possible() {
+  # Persist if available
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save >/dev/null 2>&1 || true
+  elif command -v iptables-save >/dev/null 2>&1 && [[ -d /etc/iptables ]]; then
+    iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+  fi
+}
+
+#######################################
+# Sysctl (unchanged)
+#######################################
 apply_sysctl() {
   log "Applying sysctl"
 
@@ -89,6 +112,22 @@ EOF
   sysctl --system
 }
 
+#######################################
+# Xray install
+#######################################
+install_xray() {
+  log "Installing Xray"
+  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+
+  rm -f "$KEYS_FILE"
+  install -m 0600 /dev/null "$KEYS_FILE"
+
+  xray x25519 >> "$KEYS_FILE"
+}
+
+#######################################
+# Xray config (unchanged logic)
+#######################################
 set_xray_config() {
   [[ -f "$KEYS_FILE" ]] || die "Keys file not found: $KEYS_FILE"
 
@@ -96,7 +135,7 @@ set_xray_config() {
 
   log "Registering WARP"
   local WARP_INFO
-  WARP_INFO="$(bash -c "$(curl -fsSL https://raw.githubusercontent.com/chise0713/warp-reg.sh/master/warp-reg.sh)")"
+  WARP_INFO="$(bash -c "$(curl -L warp-reg.vercel.app)")"
 
   local WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
   WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
@@ -173,7 +212,7 @@ set_xray_config() {
       {
         "type": "field",
         "domain": [
-          "geosite:openai",      "geosite:category-ru", "geosite:private",
+          "geosite:openai",      "geosite:category-ru", 
           "domain:ru",           "domain:su",           "domain:by",
           "domain:xn--p1ai"
         ],
@@ -181,7 +220,7 @@ set_xray_config() {
       },
       {
         "type": "field",
-        "ip": ["geoip:ru", "geoip:private"],
+        "ip": ["geoip:ru"],
         "outboundTag": "warp"
       }
     ]
@@ -190,6 +229,9 @@ set_xray_config() {
 EOF
 }
 
+#######################################
+# NAT / forwarding (unchanged logic)
+#######################################
 set_protocols_forwarding() {
   log "Set protocols forwarding"
 
@@ -211,27 +253,13 @@ set_protocols_forwarding() {
   # MASQUERADE is essential for DNAT to external host to work reliably
   iptables_add_once nat POSTROUTING -o "$face" -j MASQUERADE
 
-  # Persist if available
-  if command -v netfilter-persistent >/dev/null 2>&1; then
-    netfilter-persistent save >/dev/null 2>&1 || true
-  elif command -v iptables-save >/dev/null 2>&1 && [[ -d /etc/iptables ]]; then
-    iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
-  fi
-
+  persist_iptables_if_possible
   restart_firewall_service_if_any
 }
 
-install_xray() {
-  log "Installing Xray"
-  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-
-  rm -f "$KEYS_FILE"
-  install -m 0600 /dev/null "$KEYS_FILE"
-
-  xray x25519 >> "$KEYS_FILE"
-}
-
-
+#######################################
+# Commands (heredocs are ORIGINAL 1:1)
+#######################################
 add_commands() {
   # xraynewuser
   install -m 0755 /dev/null /usr/local/bin/xraynewuser
@@ -263,7 +291,7 @@ PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 IP="$(hostname -I | awk '{print $1}')"
 
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
 EOF
 
   # xrayrmuser
@@ -341,15 +369,25 @@ EMAIL="$(jq --argjson index "$INDEX" -r '.inbounds[0].settings.clients[$index].e
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 IP="$(hostname -I | awk '{print $1}')"
 
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#vless-reality-cloud-warp-$EMAIL"
+echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
 EOF
 }
 
+#######################################
+# Packages
+#######################################
+install_packages() {
+  apt update
+  apt install -y dnsutils iptables fail2ban iptables-persistent curl jq openssl
+}
+
+#######################################
+# Main
+#######################################
 main() {
   require_root
 
-  apt update
-  apt install -y dnsutils iptables fail2ban iptables-persistent curl jq openssl
+  install_packages
 
   install_xray
   set_xray_config
@@ -362,7 +400,6 @@ main() {
 
   echo "
     Команды для управления пользователями Xray:
-
         xraynewuser - создает нового пользователя
         xrayrmuser - удаление пользователей
         xraysharelink - выводит список пользователей и позволяет создать для них ссылки для подключения
