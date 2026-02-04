@@ -213,7 +213,7 @@ register_warp() {
   WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
   WARP_V6="$(jq -r '.v6' <<<"$WARP_INFO")"
   WARP_RESERVED="$(jq -r '.reserved_str' <<<"$WARP_INFO")"
-  echo "$WARP_INFO"
+  log "$WARP_INFO"
 }
 
 update_xray_config() {
@@ -313,7 +313,7 @@ update_xray_config() {
                 "type": "field",
                 "outboundTag": "warp",
                 "ip": [
-                  "ext:geoip_RU.dat:ru",
+                  "ext:geoip_RU.dat:ru"
                 ]
               }
             ]
