@@ -312,7 +312,13 @@ update_xray_config() {
                 "ip": [
                   "ext:geoip_RU.dat:ru",
                 ]
-              }
+              },
+              {
+                "ip": [
+                  "geoip:private"
+                ],
+                "outboundTag": "direct"
+              },
             ]
           },
           "stats": {}
