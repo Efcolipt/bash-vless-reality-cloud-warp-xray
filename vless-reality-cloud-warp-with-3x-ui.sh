@@ -126,7 +126,7 @@ install_xui_files() {
   tar zxvf "x-ui-linux-${arch}.tar.gz"
   chmod +x x-ui/x-ui x-ui/bin/xray-linux-* x-ui/x-ui.sh
   cp x-ui/x-ui.sh /usr/bin/x-ui
-  rm /root/x-ui-linux-*.tar.gz*
+  rm /root/x-ui-linux-*
 }
 
 setup_systemd_service() {
