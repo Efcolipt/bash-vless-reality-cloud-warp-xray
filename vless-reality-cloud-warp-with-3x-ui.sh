@@ -208,12 +208,12 @@ fetch_x25519_keys() {
 register_warp() {
   WARP_INFO="$(bash -c "$(curl -L warp-reg.vercel.app)")"
 
-  echo "$WARP_INFO"
 
   WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
   WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
   WARP_V6="$(jq -r '.v6' <<<"$WARP_INFO")"
   WARP_RESERVED="$(jq -r '.reserved_str' <<<"$WARP_INFO")"
+  echo "$WARP_INFO"
 }
 
 update_xray_config() {
