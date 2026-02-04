@@ -126,6 +126,7 @@ install_xui_files() {
   tar zxvf "x-ui-linux-${arch}.tar.gz"
   chmod +x x-ui/x-ui x-ui/bin/xray-linux-* x-ui/x-ui.sh
   cp x-ui/x-ui.sh /usr/bin/x-ui
+  rm /root/x-ui-linux-*.tar.gz*
 }
 
 setup_systemd_service() {
@@ -167,6 +168,7 @@ setup_panel_credentials() {
   XUI_PASSWORD="$(gen_random_string 18)"
   XUI_PORT="$(shuf -i 1024-62000 -n 1)"
 
+  "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false
   "$XUI_FOLDER/x-ui" setting -port "$XUI_PORT" -username "$XUI_USER" -password "$XUI_PASSWORD" -resetTwoFactor false
 
   systemctl restart x-ui
