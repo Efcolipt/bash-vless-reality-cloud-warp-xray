@@ -203,7 +203,7 @@ fetch_x25519_keys() {
 }
 
 register_warp() {
-  WARP_INFO="$(bash -c "$(curl -fsSL https://raw.githubusercontent.com/chise0713/warp-reg.sh/master/warp-reg.sh)")"
+  WARP_INFO="$(bash -c "$(curl -L warp-reg.vercel.app)")"
 
   WARP_PRIV="$(jq -r '.private_key' <<<"$WARP_INFO")"
   WARP_PUB="$(jq -r '.public_key'  <<<"$WARP_INFO")"
