@@ -1,0 +1,20 @@
+services:
+  caddy:
+    image: caddy:2.9
+    container_name: caddy
+    restart: always
+    network_mode: host
+    volumes:
+      - ./caddy/data:/data
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/templates:/srv
+
+  xray:
+    image: ghcr.io/xtls/xray-core:26.2.6
+    user: root
+    command: run -c /etc/xray/config.json
+    container_name: xray
+    restart: always
+    network_mode: host
+    volumes:
+      - ./xray:/etc/xray

@@ -1,0 +1,193 @@
+{
+    "inbounds": [
+        {
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "email": "$XRAY_EMAIL",
+                        "id": "$XRAY_UUID",
+                        "flow": "xtls-rprx-vision",
+                        "level": 0
+                    }
+                ],
+                "decryption": "none",
+                "fallbacks": [
+                    {
+                        "dest": "@uds2xhttp.sock",
+                        "xver": 1
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "raw",
+                "security": "reality",
+                "realitySettings": {
+                    "show": false,
+                    "target": "127.0.0.1:$CADDY_PORT",
+                    "xver": 1,
+                    "serverNames": [
+                        "$SERVER_DOMAIN"
+                    ],
+                    "privateKey": "$XRAY_PRIV",
+                    "shortIds": [
+                        "$SHORT_ID"
+                    ]
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls",
+                    "quic"
+                ]
+            }
+        },
+        {
+            "tag": "VLESS-XHTTP-REALITY",
+            "listen": "@uds2xhttp.sock",
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "email": "$XRAY_EMAIL",
+                        "id": "$XRAY_UUID"
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "xhttp",
+                "xhttpSettings": {
+                    "path": "/$XRAY_XHTTP_PATH"
+                },
+                "sockopt": {
+                    "acceptProxyProtocol": true
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls",
+                    "quic"
+                ]
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "domainStrategy": "UseIPv4",
+            "tag": "freedom",
+            "protocol": "freedom",
+            "settings": {}
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "block"
+        },
+        {
+            "protocol": "wireguard",
+            "tag": "warp",
+            "settings": {
+                "secretKey": "$WARP_PRIV",
+                "address": [
+                    "172.16.0.2/32",
+                    "$WARP_V6/128"
+                ],
+                "peers": [
+                    {
+                        "endpoint": "engage.cloudflareclient.com:2408",
+                        "allowedIPs": [
+                            "0.0.0.0/0",
+                            "::/0"
+                        ],
+                        "publicKey": "$WARP_PUB"
+                    }
+                ],
+                "mtu": 1280,
+                "reserved": "$WARP_RESERVED",
+                "workers": 2,
+                "domainStrategy": "ForceIP"
+            }
+        }
+    ],
+    "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+            {
+                "type": "field",
+                "outboundTag": "warp",
+                "ip": [
+                    "geoip:ru"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "block",
+                "domain": [
+                    "geosite:category-ads-all"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "warp",
+                "domain": [
+                    "geosite:netflix",
+                    "geosite:spotify",
+                    "geosite:nvidia",
+                    "geosite:tiktok",
+                    "geosite:unity",
+                    "geosite:reddit",
+                    "geosite:openai",
+                    "geosite:category-ru",
+                    "domain:openai.com",
+                    "domain:ai.com",
+                    "domain:developer.mozilla.org",
+                    "domain:behance.net",
+                    "regexp:.*\\.xn--$",
+                    "regexp:.*\\.ru$",
+                    "regexp:.*\\.su$"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "block",
+                "ip": [
+                    "geoip:private"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "block",
+                "protocol": [
+                    "bittorrent"
+                ]
+            }
+        ]
+    },
+    "dns": {
+        "servers": [
+            {
+                "address": "77.88.8.8",
+                "domains": [
+                    "geosite:category-ru"
+                ],
+                "expectIPs": [
+                    "geoip:ru"
+                ]
+            },
+            "1.1.1.1",
+            "8.8.8.8",
+            "localhost"
+        ],
+        "queryStrategy": "UseIPv4"
+    },
+    "log": {
+        "loglevel": "info",
+        "dnslogs": false
+    }
+}
