@@ -311,6 +311,8 @@ uninstall() {
   fi
 
   warn "iptables rules were NOT flushed (SSH-safe)"
+
+  exit 0
 }
 
 # ============================================================
@@ -318,19 +320,17 @@ uninstall() {
 # ============================================================
 
 judgment_parameters() {
-  INSTALL=0
-  UNINSTALL=0
+  INSTALL="0"
+  UNINSTALL="0"
 
-  while [[ "$#" -gt 0 ]]; do
+  while [[ "$#" -gt "0" ]]; do
     case "$1" in
-      install) INSTALL=1 ;;
-      uninstall|remove) UNINSTALL=1 ;;
+      install) INSTALL="1" ;;
+      uninstall|remove) UNINSTALL="1" ;;
       *) echo "Unknown option: $1"; return 1 ;;
     esac
     shift
   done
-
-  echo "$INSTALL $UNINSTALL"
 
   (( INSTALL + UNINSTALL == 0 )) && INSTALL=1
   (( INSTALL + UNINSTALL > 1 )) && {
@@ -349,7 +349,7 @@ main() {
   init_runtime_vars
   judgment_parameters "$@" || exit 1
 
-  (( UNINSTALL )) && { uninstall; exit 0; }
+  [[ "$UNINSTALL" -eq '1' ]] && uninstall
 
   install_deps
   set_domain
