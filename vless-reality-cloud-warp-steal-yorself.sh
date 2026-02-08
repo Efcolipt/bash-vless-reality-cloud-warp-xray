@@ -49,8 +49,12 @@ set_domain() {
   else
     local MATCH_FOUND=false
 
+    log "${SERVER_IPS[*]}"
+    log "${SERVER_IPS[@]}"
+
+
     for SERVER_IP in "${SERVER_IPS[@]}"; do
-      log SERVER_IP
+      log $SERVER_IP
       if [ "$RESOLVED_IP" == "$SERVER_IP" ]; then
         MATCH_FOUND=true
         break
