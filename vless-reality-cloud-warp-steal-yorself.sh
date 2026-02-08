@@ -10,6 +10,8 @@ WORKSPACE_PATH=/opt/vps
 BASE_GIT_PATH="https://raw.githubusercontent.com/Efcolipt/bash-vless-reality-cloud-warp-xray/refs/heads/main"
 GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs/server"
 
+[[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
+
 SSH_USER=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8; echo)
 SSH_USER_PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)
 SSH_PORT=$(shuf -i 1499-31999 -n 1)
@@ -25,7 +27,6 @@ die()  { printf '\033[31m%s\033[0m %s\n' "$ERROR" "$*" >&2; exit 1; }
 warn() { printf '\033[33m%s\033[0m %s\n' "$WARN"  "$*" >&2; }
 log()  { printf '\033[32m%s\033[0m %s\n' "$INFO"  "$*"; }
 
-[[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
 
 ask() { read -ep "$1 [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
@@ -249,8 +250,65 @@ EOF
   systemctl restart fail2ban
 }
 
+uninstall() {
+  if command -v docker >/dev/null 2>&1 && [ -f "$WORKSPACE_PATH/docker-compose.yml" ]; then
+    log "Stopping docker compose stack"
+    docker compose -f "$WORKSPACE_PATH/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+  fi
+
+  if command -v xray >/dev/null 2>&1; then
+    log "Removing Xray"
+    bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove 2>/dev/null || true
+  fi
+
+  rm -rf "$WORKSPACE_PATH" 2>/dev/null || true
+
+  if [ -f /etc/sysctl.d/99-bbr-tune.conf ]; then
+    log "Removing sysctl tuning"
+    rm -f /etc/sysctl.d/99-bbr-tune.conf
+    sysctl --system >/dev/null 2>&1 || true
+  fi
+
+  if dpkg -l | grep -q '^ii  fail2ban'; then
+    log "Removing Fail2ban completely"
+    systemctl stop fail2ban 2>/dev/null || true
+    systemctl disable fail2ban 2>/dev/null || true
+
+    apt-get purge -y fail2ban 2>/dev/null || true
+    rm -rf /etc/fail2ban /var/lib/fail2ban 2>/dev/null || true
+  fi
+
+  apt-get autoremove -y 2>/dev/null || true
+
+  warn "NOTE: iptables rules were NOT flushed (to avoid SSH lockout)."
+}
+
+
+judgment_parameters() {
+  INSTALL=0
+  UNINSTALL=0
+
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      install) INSTALL=1 ;;
+      uninstall|remove) UNINSTALL=1 ;;
+      *) echo "Unknown option: $1"; return 1 ;;
+    esac
+    shift
+  done
+
+  (( INSTALL + UNINSTALL == 0 )) && INSTALL=1
+  (( INSTALL + UNINSTALL > 1 )) && { echo "Choose one: install|uninstall"; return 1; }
+}
 
 main() {
+  judgment_parameters "$@" || exit 1
+  
+  if (( UNINSTALL )); then
+    uninstall
+    exit 0
+  fi
+
   debconf-set-selections <<EOF
 iptables-persistent iptables-persistent/autosave_v4 boolean true
 iptables-persistent iptables-persistent/autosave_v6 boolean true
@@ -260,7 +318,7 @@ EOF
 
   set_domain
 
-  ask "Add new ssh user ?" && set_ssh_access
+  ask "Add new ssh user?" && set_ssh_access
 
   install_vps
 
@@ -268,7 +326,7 @@ EOF
 
   set_nets
 
-  ask "Enable Fail2ban for SSH?" && set_fail2ban
+  ask "Install Fail2ban for SSH?" && set_fail2ban
 
   start_services
 
@@ -276,4 +334,4 @@ EOF
   log "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
 }
 
-main
+main "$@"
