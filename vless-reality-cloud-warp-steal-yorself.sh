@@ -331,6 +331,8 @@ judgment_parameters() {
     shift
   done
 
+  echo "$INSTALL $UNINSTALL"
+
   (( INSTALL + UNINSTALL == 0 )) && INSTALL=1
   (( INSTALL + UNINSTALL > 1 )) && {
     echo "Choose only one action: install | uninstall"
