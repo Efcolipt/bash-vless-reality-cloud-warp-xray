@@ -121,7 +121,7 @@ install_vps() {
 install_deps() {
   log "Installing deps"
   apt update
-  apt install -y dig dnsutils iptables fail2ban netfilter-persistent iptables-persistent curl jq openssl
+  apt install dig dnsutils iptables fail2ban netfilter-persistent iptables-persistent curl jq openssl -y
 
 
   if ! command -v docker 2>&1 >/dev/null; then
@@ -249,12 +249,12 @@ EOF
 
 
 main() {
-  install_deps
-
   debconf-set-selections <<EOF
 iptables-persistent iptables-persistent/autosave_v4 boolean true
 iptables-persistent iptables-persistent/autosave_v6 boolean true
 EOF
+
+  install_deps
 
   set_domain
 
