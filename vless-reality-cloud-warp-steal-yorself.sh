@@ -41,9 +41,9 @@ set_domain() {
     warn "Domain has no DNS record"
     read -ep "Are you sure? That domain has no DNS record. If you didn't add that you will have to restart xray and caddy by yourself [y/N]"$'\n' INPUT_DNS_SET_LATER
     if [[ "$INPUT_DNS_SET_LATER" =~ ^([yY])$ ]]; then
-      echo "Ok, proceeding without DNS verification"
+      log "Ok, proceeding without DNS verification"
     else 
-      echo "Come back later"
+      log "Come back later"
       exit 1
     fi
   else
@@ -62,11 +62,11 @@ set_domain() {
     done
     
     if [ "$MATCH_FOUND" = true ]; then
-      echo "✓ DNS record points to this server ($RESOLVED_IP)"
+      log "✓ DNS record points to this server ($RESOLVED_IP)"
     else
       warn "DNS record exists but points to different IP"
-      echo "  Domain resolves to: $RESOLVED_IP"
-      echo "  This server's IPs: ${SERVER_IPS[*]}"
+      warn "  Domain resolves to: $RESOLVED_IP"
+      warn "  This server's IPs: ${SERVER_IPS[*]}"
       exit 1
     fi
   fi
@@ -205,7 +205,7 @@ set_ssh_access() {
   local PBK_STATUS=$(echo $?)
 
   if [ "$PBK_STATUS" -eq 255 ]; then
-    echo "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
+    warn "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
     exit
   fi
 
@@ -273,8 +273,8 @@ EOF
 
   start_services
 
-  echo "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
-  echo "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
+  log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
+  log "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
 }
 
 main
