@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # ============================================================
 # Global constants and paths
@@ -332,7 +332,7 @@ judgment_parameters() {
     shift
   done
 
-  (( INSTALL + UNINSTALL == 0 )) && INSTALL=1
+  (( INSTALL + UNINSTALL == 0 )) && INSTALL="1"
   (( INSTALL + UNINSTALL > 1 )) && {
     echo "Choose only one action: install | uninstall"
     return 1
