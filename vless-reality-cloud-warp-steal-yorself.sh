@@ -292,7 +292,7 @@ install_vps() {
 
 uninstall() {
   if command -v docker >/dev/null && [[ -f "$WORKSPACE_PATH/docker-compose.yml" ]]; then
-    log "Docker Uninstalling"
+    log "Docker down"
     docker compose -f "$WORKSPACE_PATH/docker-compose.yml" down --remove-orphans || true
   fi
 
