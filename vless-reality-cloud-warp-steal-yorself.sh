@@ -79,6 +79,7 @@ install_caddy() {
 }
 
 get_warp() {
+  log "Get warp config"
   local WARP_INFO="$(curl -fsSL https://warp-reg.vercel.app | bash)"
 
   local WARP_PRIV="$(jq -er '.private_key'   <<<"$WARP_INFO")"
@@ -118,6 +119,7 @@ install_vps() {
 }
 
 install_deps() {
+  log "Installing deps"
   apt update
   apt install -y dig dnsutils iptables fail2ban netfilter-persistent iptables-persistent curl jq openssl
 
@@ -132,6 +134,7 @@ iptables_add() {
 }
 
 set_iptables_config() {
+  log "Set iptables config"
   iptables_add INPUT -p icmp -j ACCEPT
   iptables_add INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
   iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
@@ -144,6 +147,7 @@ set_iptables_config() {
 }
 
 set_nets() {
+  log "Set nets bbr"
  cat >/etc/sysctl.d/99-bbr-tune.conf <<'EOF'
 net.core.rmem_max=67108864
 net.core.wmem_max=67108864
@@ -184,6 +188,7 @@ start_services() {
 }
 
 set_ssh_access() {
+  log "Set ssh access"
   local INPUT_SSH_PUB
   read -ep "Enter SSH public key:"$'\n' INPUT_SSH_PUB
 
@@ -224,22 +229,41 @@ set_ssh_access() {
   systemctl restart ssh
 }
 
+set_fail2ban() {
+  log "Configuring fail2ban"
+
+  mkdir -p /etc/fail2ban/jail.d
+
+  cat >/etc/fail2ban/jail.d/sshd.local <<'EOF'
+[sshd]
+enabled = true
+maxretry = 6
+findtime = 1h
+bantime = 1d
+ignoreip = 127.0.0.1/8
+EOF
+
+  systemctl enable fail2ban
+  systemctl restart fail2ban
+}
+
+
 main() {
-    debconf-set-selections <<EOF
+  install_deps
+
+  debconf-set-selections <<EOF
 iptables-persistent iptables-persistent/autosave_v4 boolean true
 iptables-persistent iptables-persistent/autosave_v6 boolean true
 EOF
 
-  install_deps
-
   set_domain
-
 
   set_ssh_access
 
   install_vps
   set_iptables_config
   set_nets
+  set_fail2ban
 
   start_services
 

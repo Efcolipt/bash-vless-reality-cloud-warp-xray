@@ -2,6 +2,7 @@
         https_port $CADDY_PORT
         default_bind 127.0.0.1
         servers {
+                protocols h1 h2
                 listener_wrappers {
                         proxy_protocol {
                                 allow 127.0.0.1/32
