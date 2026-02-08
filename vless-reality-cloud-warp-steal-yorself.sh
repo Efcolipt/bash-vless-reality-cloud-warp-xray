@@ -31,45 +31,33 @@ warn() { echo "$WARN $*" >&2; }
 set_domain() {
   read -ep "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
 
-  export SERVER_DOMAIN=$(echo $INPUT_SERVER_DOMAIN | idn)
+  export SERVER_DOMAIN="$(echo "$INPUT_SERVER_DOMAIN" | idn)"
 
-  SERVER_IPS=$(hostname -I)
+  read -ra SERVER_IPS <<< "$(hostname -I)"
 
-  RESOLVED_IP=$(dig +short $SERVER_DOMAIN | tail -n1)
+  SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^172\.|^10\.|^192\.168\.'))
+
+  RESOLVED_IP="$(dig +short "$SERVER_DOMAIN" | grep -E '^[0-9.]+' | tail -n1)"
 
   if [ -z "$RESOLVED_IP" ]; then
     warn "Domain has no DNS record"
-    read -ep "Are you sure? That domain has no DNS record. If you didn't add that you will have to restart xray and caddy by yourself [y/N]"$'\n' INPUT_DNS_SET_LATER
-    if [[ "$INPUT_DNS_SET_LATER" =~ ^([yY])$ ]]; then
-      log "Ok, proceeding without DNS verification"
-    else 
-      log "Come back later"
-      exit 1
-    fi
-  else
-    local MATCH_FOUND=false
-
-    log "${SERVER_IPS[*]}"
-    log "${SERVER_IPS[@]}"
-
-
-    for SERVER_IP in "${SERVER_IPS[@]}"; do
-      log $SERVER_IP
-      if [ "$RESOLVED_IP" == "$SERVER_IP" ]; then
-        MATCH_FOUND=true
-        break
-      fi
-    done
-    
-    if [ "$MATCH_FOUND" = true ]; then
-      log "✓ DNS record points to this server ($RESOLVED_IP)"
-    else
-      warn "DNS record exists but points to different IP"
-      warn "  Domain resolves to: $RESOLVED_IP"
-      warn "  This server's IPs: ${SERVER_IPS[*]}"
-      exit 1
-    fi
+    read -ep "Proceed without DNS verification? [y/N] " INPUT_DNS_SET_LATER
+    [[ "$INPUT_DNS_SET_LATER" =~ ^[yY]$ ]] || exit 1
+    log "Proceeding without DNS verification"
+    return
   fi
+
+  for SERVER_IP in "${SERVER_IPS[@]}"; do
+    if [ "$RESOLVED_IP" = "$SERVER_IP" ]; then
+      log "✓ DNS record points to this server ($RESOLVED_IP)"
+      return
+    fi
+  done
+
+  warn "DNS record exists but points to different IP"
+  warn "  Domain resolves to: $RESOLVED_IP"
+  warn "  This server's IPs: ${SERVER_IPS[*]}"
+  exit 1
 }
 
 install_docker_compose() {
