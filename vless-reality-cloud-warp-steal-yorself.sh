@@ -291,21 +291,20 @@ install_vps() {
 # ============================================================
 
 uninstall() {
-  log "Uninstalling script components"
-
   if command -v docker >/dev/null && [[ -f "$WORKSPACE_PATH/docker-compose.yml" ]]; then
+    log "Docker Uninstalling"
     docker compose -f "$WORKSPACE_PATH/docker-compose.yml" down --remove-orphans || true
   fi
 
-  if command -v xray >/dev/null; then
-    bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" remove || true
-  fi
-
+  log "Remove workspace"
   rm -rf "$WORKSPACE_PATH"
+
+  log "Remove bbr tune"
   rm -f /etc/sysctl.d/99-bbr-tune.conf
   sysctl --system >/dev/null || true
 
   if systemctl list-unit-files | grep -q fail2ban; then
+    log "Remove fail2ban"
     systemctl stop fail2ban || true
     $PKG_REMOVE fail2ban || true
     rm -rf /etc/fail2ban /var/lib/fail2ban
