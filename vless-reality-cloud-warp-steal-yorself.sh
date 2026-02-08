@@ -21,12 +21,13 @@ export XRAY_XHTTP_PATH=$(openssl rand -hex 12)
 #######################################
 # Logging / errors
 #######################################
-die() { echo "$ERROR $*" >&2; exit 1; }
-log() { echo "$INFO $*"; }
-warn() { echo "$WARN $*" >&2; }
-
+die()  { printf '\033[31m%s\033[0m %s\n' "$ERROR" "$*" >&2; exit 1; }
+warn() { printf '\033[33m%s\033[0m %s\n' "$WARN"  "$*" >&2; }
+log()  { printf '\033[32m%s\033[0m %s\n' "$INFO"  "$*"; }
 
 [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script with root privilege"
+
+ask() { read -ep "$1 [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
 set_domain() {
   read -ep "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
@@ -41,8 +42,7 @@ set_domain() {
 
   if [ -z "$RESOLVED_IP" ]; then
     warn "Domain has no DNS record"
-    read -ep "Proceed without DNS verification? [y/N] " INPUT_DNS_SET_LATER
-    [[ "$INPUT_DNS_SET_LATER" =~ ^[yY]$ ]] || exit 1
+    ask "Proceed without DNS verification?" || exit 1
     log "Proceeding without DNS verification"
     return
   fi
@@ -252,12 +252,15 @@ EOF
 
   set_domain
 
-  set_ssh_access
+  ask "Add new ssh user ?" && set_ssh_access
 
   install_vps
-  set_iptables_config
+
+  ask "Apply iptables firewall?"  && set_iptables_config
+
   set_nets
-  set_fail2ban
+
+  ask "Enable Fail2ban for SSH?" && set_fail2ban
 
   start_services
 
