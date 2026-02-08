@@ -38,9 +38,9 @@ set_domain() {
   RESOLVED_IP=$(dig +short $SERVER_DOMAIN | tail -n1)
 
   if [ -z "$RESOLVED_IP" ]; then
-    echo "Warning: Domain has no DNS record"
-    read -ep "Are you sure? That domain has no DNS record. If you didn't add that you will have to restart xray and caddy by yourself [y/N]"$'\n' prompt_response
-    if [[ "$prompt_response" =~ ^([yY])$ ]]; then
+    warn "Domain has no DNS record"
+    read -ep "Are you sure? That domain has no DNS record. If you didn't add that you will have to restart xray and caddy by yourself [y/N]"$'\n' INPUT_DNS_SET_LATER
+    if [[ "$INPUT_DNS_SET_LATER" =~ ^([yY])$ ]]; then
       echo "Ok, proceeding without DNS verification"
     else 
       echo "Come back later"
@@ -58,7 +58,7 @@ set_domain() {
     if [ "$MATCH_FOUND" = true ]; then
       echo "✓ DNS record points to this server ($RESOLVED_IP)"
     else
-      echo "Warning: DNS record exists but points to different IP"
+      warn "DNS record exists but points to different IP"
       echo "  Domain resolves to: $RESOLVED_IP"
       echo "  This server's IPs: ${SERVER_IPS[*]}"
       exit 1
@@ -121,7 +121,7 @@ install_vps() {
 install_deps() {
   log "Installing deps"
   apt update
-  apt install dnsutils iptables fail2ban netfilter-persistent iptables-persistent curl jq openssl -y
+  apt install idn dnsutils iptables fail2ban netfilter-persistent iptables-persistent curl jq openssl -y
 
 
   if ! command -v docker 2>&1 >/dev/null; then
