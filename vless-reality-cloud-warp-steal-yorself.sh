@@ -42,7 +42,7 @@ set_domain() {
 
   if [ -z "$RESOLVED_IP" ]; then
     warn "Domain has no DNS record"
-    ask "Proceed without DNS verification?" || exit 1
+    ask "Proceed without DNS verification? If you didn't add that you will have to restart xray and caddy by yourself" || exit 1
     log "Proceeding without DNS verification"
     return
   fi
@@ -54,10 +54,9 @@ set_domain() {
     fi
   done
 
-  warn "DNS record exists but points to different IP"
-  warn "  Domain resolves to: $RESOLVED_IP"
-  warn "  This server's IPs: ${SERVER_IPS[*]}"
-  exit 1
+  warn "Domain resolves to: $RESOLVED_IP"
+  warn "This server's IPs: ${SERVER_IPS[*]}"
+  die "DNS record exists but points to different IP"
 }
 
 install_docker_compose() {
@@ -74,14 +73,23 @@ install_caddy() {
 
 get_warp() {
   log "Get warp config"
-  local WARP_INFO="$(curl -fsSL https://warp-reg.vercel.app | bash)"
+  local WARP_INFO
 
-  local WARP_PRIV="$(jq -er '.private_key'   <<<"$WARP_INFO")"
-  local WARP_PUB="$(jq -er '.public_key'    <<<"$WARP_INFO")"
-  local WARP_V6="$(jq -er '.v6'             <<<"$WARP_INFO")"
-  local WARP_RESERVED="$(jq -er '.reserved_str' <<<"$WARP_INFO")"
+  for i in 1 2 3; do
+    WARP_INFO="$(curl -fsSL https://warp-reg.vercel.app | bash 2>/dev/null || true)"
 
-  [[ -n "$WARP_PRIV" && -n "$WARP_PUB" && -n "$WARP_V6" && -n "$WARP_RESERVED" ]] || die "Failed to parse warp-reg output"
+    echo "$WARP_INFO" | jq -e . >/dev/null 2>&1 && break
+
+    warn "warp-reg returned non-JSON (try $i/3)"
+    sleep 2
+  done
+
+  echo "$WARP_INFO" | jq -e . >/dev/null 2>&1 || die "Failed to get valid warp config"
+
+  WARP_PRIV="$(jq -er '.private_key'   <<<"$WARP_INFO")"
+  WARP_PUB="$(jq -er '.public_key'    <<<"$WARP_INFO")"
+  WARP_V6="$(jq -er '.v6'             <<<"$WARP_INFO")"
+  WARP_RESERVED="$(jq -er '.reserved_str' <<<"$WARP_INFO")"
 
   export WARP_PRIV WARP_PUB WARP_V6 WARP_RESERVED
 }

@@ -12,18 +12,42 @@
         }
         auto_https disable_redirects
 }
+
 https://$SERVER_DOMAIN {
         root * /srv
         file_server
+
+        header {
+                -Server
+        }
+
+        handle_errors {
+                header {
+                        -Server
+                }
+        }
 }
+
 http://$SERVER_DOMAIN {
         bind 0.0.0.0
         redir https://$SERVER_DOMAIN{uri} permanent
+
+        header {
+                -Server
+        }
+
+        handle_errors {
+                header {
+                        -Server
+                }
+        }
 }
+
 :$CADDY_PORT {
         tls internal
         respond 204
 }
+
 :80 {
         bind 0.0.0.0
         respond 204
