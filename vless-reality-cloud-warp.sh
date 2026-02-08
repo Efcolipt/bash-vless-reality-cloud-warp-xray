@@ -153,6 +153,23 @@ set_xray_config() {
   cat >"$XRAY_PATH_CONFIG" <<EOF
 {
   "log": {"loglevel": "info"},
+  "dns": {
+      "servers": [
+        {
+            "address": "77.88.8.8",
+            "domains": [
+                "geosite:category-ru"
+            ],
+            "expectIPs": [
+                "geoip:ru"
+            ]
+        },
+        "1.1.1.1",
+        "8.8.8.8",
+        "localhost"
+    ],
+    "queryStrategy": "UseIPv4"
+  },
   "inbounds": [
     {
       "listen": "$LISTEN_IP",
@@ -291,7 +308,7 @@ PBK="$(awk -F': ' '/Password/ {print $2; exit}' $KEYS_FILE)"
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 IP="$(hostname -I | awk '{print $1}')"
 
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
+echo "$PROTOCOL://$UUID@$IP:443?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
 EOF
 
   # xrayrmuser
@@ -369,7 +386,7 @@ EMAIL="$(jq --argjson index "$INDEX" -r '.inbounds[0].settings.clients[$index].e
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$PATH_CONFIG")"
 IP="$(hostname -I | awk '{print $1}')"
 
-echo "$PROTOCOL://$UUID@$IP?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
+echo "$PROTOCOL://$UUID@$IP:443?security=reality&sni=$SNI&fp=chrome&pbk=$PBK&sid=$SID&alpn=h2&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$EMAIL"
 EOF
 }
 
