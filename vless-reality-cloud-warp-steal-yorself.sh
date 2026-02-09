@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+set +x
 trap 'echo "[FATAL] exit on line $LINENO, status=$?" >&2' ERR
 
 
