@@ -353,7 +353,9 @@ main() {
   detect_platform
   log "yep0"
 
-  [[ "$REMOVE" -eq '1' ]] && uninstall
+  if [[ "$REMOVE" -eq '1' ]] then 
+    uninstall
+  fi
 
   init_runtime_vars
 
