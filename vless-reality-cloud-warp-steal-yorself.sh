@@ -285,7 +285,7 @@ instsall_caddy() {
   mkdir -p "$WORKSPACE_PATH/caddy/templates"
 
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/confluence.html" | envsubst >"$WORKSPACE_PATH/caddy/templates/index.html"
-  wget -qO- "$GIT_SERVER_CONFIGS_PATH/Caddyfile" | envsubst >"$WORKSPACE_PATH/caddy/Caddyfile"
+  wget -qO- "$GIT_SERVER_CONFIGS_PATH/caddyfile" | envsubst >"$WORKSPACE_PATH/caddy/Caddyfile"
 
   docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
 }
