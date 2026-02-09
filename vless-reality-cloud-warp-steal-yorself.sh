@@ -393,8 +393,9 @@ add_new_ssh_user() {
 
 main() {
   require_root
-  detect_platform
   judgment_parameters "$@" || return 1
+
+  detect_platform
 
   if [[ "$REMOVE" -eq '1' ]] then 
     uninstall
