@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-set -x
 trap 'echo "[FATAL] exit on line $LINENO, status=$?" >&2' ERR
 
 
@@ -353,7 +352,7 @@ add_new_ssh_user() {
   fi
 
   rm ./test_pbk
-  
+
   SSH_USER="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)"
   SSH_USER_PASS="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)"
   SSH_PORT="$(shuf -i 1499-31999 -n 1)"
