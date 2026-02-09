@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-set -eu
+#!/bin/bash
+set -euo pipefail
+
 
 # ============================================================
 # Global constants and paths
@@ -384,6 +385,8 @@ add_new_ssh_user() {
 # ============================================================
 
 show_info() {
+  clear
+  
   if [[ -n "${SSH_USER:-}" ]]; then
     log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
   fi
