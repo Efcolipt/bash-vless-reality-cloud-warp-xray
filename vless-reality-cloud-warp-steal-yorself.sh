@@ -337,8 +337,6 @@ judgment_parameters() {
     echo "Choose only one action: install | uninstall"
     return 1
   }
-
-  echo 
 }
 
 # ============================================================
@@ -347,12 +345,19 @@ judgment_parameters() {
 
 main() {
   require_root
+  log "yep002"
   judgment_parameters "$@" || return 1
+  log "yep001"
 
   detect_platform
+  log "yep0"
   init_runtime_vars
 
+  log "yep1"
+
   [[ "$UNINSTALL" -eq '1' ]] && uninstall
+
+  log "yep2"
 
   install_deps
   set_domain
