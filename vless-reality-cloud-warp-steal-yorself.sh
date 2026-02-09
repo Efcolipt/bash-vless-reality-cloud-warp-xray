@@ -346,15 +346,12 @@ add_new_ssh_user() {
 
   echo "$INPUT_SSH_PUB" > ./test_pbk
 
-  ssh-keygen -l -f ./test_pbk
-
-  local PBK_STATUS=$(echo $?)
-
-  if [ "$PBK_STATUS" -eq 255 ]; then
-    die "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
+  if ! ssh-keygen -l -f ./test_pbk >/dev/null 2>&1; then
+    rm -f ./test_pbk
+    die "Invalid SSH public key"
   fi
 
-  rm ./test_pbk
+  rm -f ./test_pbk
 
   SSH_USER="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)"
   SSH_USER_PASS="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)"
