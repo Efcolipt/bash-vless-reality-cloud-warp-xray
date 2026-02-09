@@ -353,9 +353,9 @@ add_new_ssh_user() {
   fi
 
   rm ./test_pbk
-
-  SSH_USER="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
-  SSH_USER_PASS="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13)"
+  
+  SSH_USER="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)"
+  SSH_USER_PASS="$(head -c 64 /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)"
   SSH_PORT="$(shuf -i 1499-31999 -n 1)"
 
   useradd $SSH_USER -s /bin/bash
