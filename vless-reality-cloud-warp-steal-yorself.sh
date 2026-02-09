@@ -357,6 +357,8 @@ main() {
     uninstall
   fi
 
+  log "yep222"
+
   init_runtime_vars
 
   log "yep2"
