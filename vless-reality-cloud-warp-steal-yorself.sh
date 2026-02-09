@@ -81,7 +81,7 @@ init_runtime_vars() {
 
 set_domain() {
   read -rp "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
-  export SERVER_DOMAIN="$(echo "$INPUT_SERVER_DOMAIN" | idn)"
+  export SERVER_DOMAIN="$(idn <<<"$INPUT_SERVER_DOMAIN")" || die "Invalid domain"
 
   read -ra SERVER_IPS <<<"$(hostname -I)"
   SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^10\.|^172\.|^192\.168\.'))
