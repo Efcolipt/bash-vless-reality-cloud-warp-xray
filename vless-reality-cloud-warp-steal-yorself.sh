@@ -302,7 +302,6 @@ uninstall() {
     log "Remove fail2ban"
     systemctl stop fail2ban || true
     $PKG_REMOVE fail2ban || true
-    rm -rf /etc/fail2ban /var/lib/fail2ban
   fi
 
   warn "iptables rules were NOT flushed (SSH-safe)"
