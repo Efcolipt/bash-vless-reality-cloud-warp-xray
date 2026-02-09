@@ -116,14 +116,14 @@ iptables-persistent iptables-persistent/autosave_v6 boolean true
 EOF
       $PKG_INSTALL \
         idn bind9-dnsutils iptables \
-        fail2ban netfilter-persistent iptables-persistent \
+        netfilter-persistent iptables-persistent \
         curl jq openssl
       ;;
     dnf|yum)
       $PKG_INSTALL epel-release || true
       $PKG_INSTALL \
         idn bind-utils iptables iptables-services \
-        fail2ban curl jq openssl
+        curl jq openssl
       ;;
   esac
 }
@@ -215,6 +215,8 @@ EOF
 
 set_fail2ban() {
   log "Configuring Fail2ban"
+
+  $PKG_INSTALL fail2ban
 
   mkdir -p /etc/fail2ban/jail.d
   cat >/etc/fail2ban/jail.d/sshd.local <<'EOF'
@@ -381,6 +383,7 @@ add_new_ssh_user() {
   systemctl restart ssh
 
   iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
+
   iptables_save
 
   log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
@@ -407,7 +410,8 @@ main() {
   install_vps
   set_nets
 
-  ask "Apply iptables firewall?" && set_iptables_config
+  set_iptables_config
+  
   ask "Install Fail2ban for SSH?" && set_fail2ban
 
   docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
