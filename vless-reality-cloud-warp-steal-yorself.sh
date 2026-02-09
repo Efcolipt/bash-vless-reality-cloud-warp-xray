@@ -321,20 +321,20 @@ uninstall() {
 
 judgment_parameters() {
   INSTALL="0"
-  UNINSTALL="0"
+  REMOVE="0"
 
   while [[ "$#" -gt "0" ]]; do
     case "$1" in
       install) INSTALL="1" ;;
-      uninstall|remove) UNINSTALL="1" ;;
+      uninstall|remove) REMOVE="1" ;;
       *) echo "Unknown option: $1"; return 1 ;;
     esac
     shift
   done
 
-  if (( INSTALL + UNINSTALL == 0 )); then
+  if (( INSTALL + REMOVE == 0 )); then
     INSTALL=1
-  elif (( INSTALL + UNINSTALL > 1 )); then
+  elif (( INSTALL + REMOVE > 1 )); then
     echo "Choose only one action: install | uninstall"
     return 1
   fi
@@ -352,11 +352,10 @@ main() {
 
   detect_platform
   log "yep0"
+
+  [[ "$REMOVE" -eq '1' ]] && uninstall
+
   init_runtime_vars
-
-  log "yep1"
-
-  [[ "$UNINSTALL" -eq '1' ]] && uninstall
 
   log "yep2"
 
