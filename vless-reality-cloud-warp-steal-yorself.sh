@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
-trap 'echo "[ERROR] line $LINENO failed"; exit 1' ERR
+set -x
+trap 'echo "[FATAL] exit on line $LINENO, status=$?" >&2' ERR
+
+
 
 # ============================================================
 # Global constants and paths
