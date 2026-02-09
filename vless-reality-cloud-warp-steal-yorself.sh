@@ -30,7 +30,7 @@ log()  { printf '\033[32m%s\033[0m %s\n' "$INFO"  "$*"; }
 # ============================================================
 
 ask() {
-  read -ep "$1 [y/N] " a
+  read -rp "$1 [y/N] " a
   [[ "$a" =~ ^[Yy]$ ]]
 }
 
@@ -81,7 +81,7 @@ init_runtime_vars() {
 # ============================================================
 
 set_domain() {
-  read -ep "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
+  read -rp "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
   export SERVER_DOMAIN="$(echo "$INPUT_SERVER_DOMAIN" | idn)"
 
   read -ra SERVER_IPS <<<"$(hostname -I)"
@@ -339,7 +339,7 @@ judgment_parameters() {
 add_new_ssh_user() {
   log "Add new user SSH"
   local INPUT_SSH_PUB
-  read -ep "Enter SSH public key:"$'\n' INPUT_SSH_PUB
+  read -rp "Enter SSH public key:"$'\n' INPUT_SSH_PUB
 
   echo "$INPUT_SSH_PUB" > ./test_pbk
 
