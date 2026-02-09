@@ -346,24 +346,15 @@ judgment_parameters() {
 
 main() {
   require_root
-  log "yep002"
-  judgment_parameters "$@" || return 1
-  log "yep001"
-
   detect_platform
-  log "yep0"
+  judgment_parameters "$@" || return 1
 
   if [[ "$REMOVE" -eq '1' ]] then 
     uninstall
   fi
 
-  log "yep222"
-
-  init_runtime_vars
-
-  log "yep2"
-
   install_deps
+  init_runtime_vars
   set_domain
 
   ask "Add new SSH user?" && set_ssh_access
