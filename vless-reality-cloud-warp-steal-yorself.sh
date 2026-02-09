@@ -255,15 +255,9 @@ get_warp() {
 }
 
 install_xray() {
-  log "Installing Xray"
-  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" install
-
-  local KEYS
-  KEYS="$(xray x25519)"
-
-  export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2}' <<<"$KEYS")"
-  export XRAY_PUB="$(awk -F': ' '/Password/ {print $2}' <<<"$KEYS")"
-  export XRAY_UUID="$(xray uuid)"
+  export XRAY_PRIV="$(docker run --rm ghcr.io/xtls/xray-core x25519 | head -n1 | cut -d' ' -f 2)"
+  export XRAY_PUB="$(docker run --rm ghcr.io/xtls/xray-core x25519 -i $XRAY_PRIV | tail -2 | head -1 | cut -d' ' -f 2)"
+  export XRAY_UUID="$(docker run --rm ghcr.io/xtls/xray-core uuid)"
   export XRAY_EMAIL="$(openssl rand -hex 12)"
   export SHORT_ID="$(openssl rand -hex 8)"
 
@@ -316,13 +310,13 @@ uninstall() {
 # ============================================================
 
 judgment_parameters() {
-  INSTALL="0"
-  REMOVE="0"
+  INSTALL=0
+  REMOVE=0
 
-  while [[ "$#" -gt "0" ]]; do
+  while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      install) INSTALL="1" ;;
-      uninstall|remove) REMOVE="1" ;;
+      install) INSTALL=1 ;;
+      uninstall|remove) REMOVE=1 ;;
       *) echo "Unknown option: $1"; return 1 ;;
     esac
     shift
@@ -383,13 +377,19 @@ add_new_ssh_user() {
   iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
 
   iptables_save
-
-  log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
 }
 
 # ============================================================
 # Main entrypoint
 # ============================================================
+
+show_info() {
+  if [[ -n "${SSH_USER:-}" ]]; then
+    log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
+  fi
+
+  log "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
+}
 
 main() {
   require_root
@@ -397,27 +397,27 @@ main() {
 
   detect_platform
 
-  if [[ "$REMOVE" -eq '1' ]] then 
+  if [[ "$REMOVE" -eq 1 ]] then 
     uninstall
   fi
 
   install_deps
   init_runtime_vars
+
   set_domain
-
   install_vps
-  set_nets
 
+  set_nets
   set_iptables_config
   
   ask "Install Fail2ban for SSH?" && set_fail2ban
+  ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
 
   docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
   docker compose -f "$WORKSPACE_PATH/docker-compose.yml" up -d --remove-orphans
+  docker rmi ghcr.io/xtls/xray-core:latest caddy:latest
 
-  ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
-
-  log "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
+  show_info
 }
 
 main "$@"
