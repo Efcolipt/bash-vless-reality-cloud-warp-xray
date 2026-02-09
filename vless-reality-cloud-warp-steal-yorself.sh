@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set +x
 
 shopt -s inherit_errexit 2>/dev/null || true
 
