@@ -269,9 +269,9 @@ install_xray() {
   docker pull "$XRAY_IMAGE"
 
   local XRAY_KEYS="$(docker run --rm "$XRAY_IMAGE" x25519)"
-
-  export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$XRAY_KEYS")"
-  export XRAY_PUB="$(awk -F': ' '/Password/ {print $2; exit}' $XRAY_KEYS)"
+  
+  export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' <<<"$XRAY_KEYS")"
+  export XRAY_PUB="$(awk -F': ' '/Password/  {print $2; exit}' <<<"$XRAY_KEYS")"
   export XRAY_UUID="$(docker run --rm "$XRAY_IMAGE" uuid)"
   export XRAY_EMAIL="$(openssl rand -hex 12)"
   export SHORT_ID="$(openssl rand -hex 8)"
