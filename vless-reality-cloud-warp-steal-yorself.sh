@@ -263,6 +263,8 @@ get_warp() {
 }
 
 install_xray() {
+  mkdir -p "$WORKSPACE_PATH/xray"
+  
   local XRAY_KEYS="$(docker run --rm "$XRAY_IMAGE" x25519)"
   
   export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' <<<"$XRAY_KEYS")"
@@ -273,7 +275,6 @@ install_xray() {
 
   get_warp
 
-  mkdir -p "$WORKSPACE_PATH/xray"
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/xray-config.json" | envsubst >"$WORKSPACE_PATH/xray/config.json"
 }
 
@@ -287,6 +288,7 @@ instsall_caddy() {
 }
 
 install_vps() {
+  mkdir -p $WORKSPACE_PATH
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/compose" | envsubst >"$WORKSPACE_PATH/docker-compose.yml"
 
   instsall_caddy
