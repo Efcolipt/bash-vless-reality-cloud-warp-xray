@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-
+trap 'echo "[ERROR] line $LINENO failed"; exit 1' ERR
 
 # ============================================================
 # Global constants and paths
@@ -136,7 +136,9 @@ install_deps() {
 
   if ! command -v docker >/dev/null 2>&1; then
     log "Installing Docker"
-    curl -fsSL https://get.docker.com | sh
+    curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+    sh /tmp/get-docker.sh
+    rm -f /tmp/get-docker.sh
   fi
 }
 
@@ -400,7 +402,7 @@ main() {
 
   detect_platform
 
-  if [[ "$REMOVE" -eq 1 ]] then 
+  if [[ "$REMOVE" -eq 1 ]]; then
     uninstall
   fi
 
