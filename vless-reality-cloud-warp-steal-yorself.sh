@@ -264,9 +264,15 @@ get_warp() {
 }
 
 install_xray() {
-  export XRAY_PRIV="$(docker run --rm ghcr.io/xtls/xray-core x25519 | head -n1 | cut -d' ' -f 2)"
-  export XRAY_PUB="$(docker run --rm ghcr.io/xtls/xray-core x25519 -i $XRAY_PRIV | tail -2 | head -1 | cut -d' ' -f 2)"
-  export XRAY_UUID="$(docker run --rm ghcr.io/xtls/xray-core uuid)"
+  local XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
+
+  docker pull "$XRAY_IMAGE"
+
+  local XRAY_KEYS="$(docker run --rm "$XRAY_IMAGE" x25519)"
+
+  export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' "$XRAY_KEYS")"
+  export XRAY_PUB="$(awk -F': ' '/Password/ {print $2; exit}' $XRAY_KEYS)"
+  export XRAY_UUID="$(docker run --rm "$XRAY_IMAGE" uuid)"
   export XRAY_EMAIL="$(openssl rand -hex 12)"
   export SHORT_ID="$(openssl rand -hex 8)"
 
