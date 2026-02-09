@@ -19,6 +19,9 @@ WORKSPACE_PATH="/opt/vps"
 BASE_GIT_PATH="https://raw.githubusercontent.com/Efcolipt/bash-vless-reality-cloud-warp-xray/refs/heads/main"
 GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs/server"
 
+XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
+CADDY_IMAGE="caddy:2.9"
+
 # ============================================================
 # Logging helpers (colored output)
 # ============================================================
@@ -264,10 +267,6 @@ get_warp() {
 }
 
 install_xray() {
-  local XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
-
-  docker pull "$XRAY_IMAGE"
-
   local XRAY_KEYS="$(docker run --rm "$XRAY_IMAGE" x25519)"
   
   export XRAY_PRIV="$(awk -F': ' '/PrivateKey/ {print $2; exit}' <<<"$XRAY_KEYS")"
@@ -282,13 +281,19 @@ install_xray() {
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/xray-config.json" | envsubst >"$WORKSPACE_PATH/xray/config.json"
 }
 
-install_vps() {
+instsall_caddy() {
   mkdir -p "$WORKSPACE_PATH/caddy/templates"
 
-  wget -qO- "$GIT_SERVER_CONFIGS_PATH/compose" | envsubst >"$WORKSPACE_PATH/docker-compose.yml"
-  wget -qO- "$GIT_SERVER_CONFIGS_PATH/confluence" | envsubst >"$WORKSPACE_PATH/caddy/templates/index.html"
-  wget -qO- "$GIT_SERVER_CONFIGS_PATH/caddyfile" | envsubst >"$WORKSPACE_PATH/caddy/Caddyfile"
+  wget -qO- "$GIT_SERVER_CONFIGS_PATH/confluence.html" | envsubst >"$WORKSPACE_PATH/caddy/templates/index.html"
+  wget -qO- "$GIT_SERVER_CONFIGS_PATH/Caddyfile" | envsubst >"$WORKSPACE_PATH/caddy/Caddyfile"
 
+  docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
+}
+
+install_vps() {
+  wget -qO- "$GIT_SERVER_CONFIGS_PATH/compose" | envsubst >"$WORKSPACE_PATH/docker-compose.yml"
+
+  instsall_caddy
   install_xray
 }
 
@@ -426,9 +431,8 @@ main() {
   ask "Install Fail2ban for SSH?" && set_fail2ban
   ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
 
-  docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
   docker compose -f "$WORKSPACE_PATH/docker-compose.yml" up -d --remove-orphans
-  docker rmi ghcr.io/xtls/xray-core:latest caddy:latest
+  docker rmi $XRAY_IMAGE $CADDY_IMAGE
 
   show_info
 }
