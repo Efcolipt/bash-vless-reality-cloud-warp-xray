@@ -5,7 +5,7 @@ shopt -s inherit_errexit 2>/dev/null || true
 
 trap 'rc=$?; echo "[ERROR] line $LINENO: $BASH_COMMAND (exit=$rc)" >&2; exit $rc' ERR
 
-
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
 # ============================================================
 # Global constants and paths
