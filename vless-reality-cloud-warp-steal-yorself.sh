@@ -90,7 +90,7 @@ set_domain() {
   read -ra SERVER_IPS <<<"$(hostname -I)"
 
   SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^10\.|^172\.|^192\.168\.'))
-  RESOLVED_IP="$(dig +short "$SERVER_DOMAIN" | grep -E '^[0-9.]+' | tail -n1)"
+  RESOLVED_IP="$(dig +short "$SERVER_DOMAIN" | grep -E '^[0-9.]+' || true | tail -n1)"
 
   if [[ -z "$RESOLVED_IP" ]]; then
     warn "Domain has no DNS record"
