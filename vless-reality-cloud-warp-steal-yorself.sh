@@ -68,10 +68,6 @@ detect_platform() {
 # ============================================================
 
 init_runtime_vars() {
-  SSH_USER="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
-  SSH_USER_PASS="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13)"
-  SSH_PORT="$(shuf -i 1499-31999 -n 1)"
-
   export CADDY_PORT="$(shuf -i 32000-62000 -n 1)"
   export XRAY_XHTTP_PATH="$(openssl rand -hex 12)"
 }
@@ -163,7 +159,6 @@ set_iptables_config() {
 
   iptables_add INPUT -p icmp -j ACCEPT
   iptables_add INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-  iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
   iptables_add INPUT -p tcp -m tcp --dport 80 -j ACCEPT
   iptables_add INPUT -p tcp -m tcp --dport 443 -j ACCEPT
   iptables_add INPUT -i lo -j ACCEPT
@@ -340,6 +335,58 @@ judgment_parameters() {
   fi
 }
 
+
+
+add_new_ssh_user() {
+  log "Add new user SSH"
+  local INPUT_SSH_PUB
+  read -ep "Enter SSH public key:"$'\n' INPUT_SSH_PUB
+
+  echo "$INPUT_SSH_PUB" > ./test_pbk
+
+  ssh-keygen -l -f ./test_pbk
+
+  local PBK_STATUS=$(echo $?)
+
+  if [ "$PBK_STATUS" -eq 255 ]; then
+    warn "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
+    exit
+  fi
+
+  rm ./test_pbk
+
+  SSH_USER="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
+  SSH_USER_PASS="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13)"
+  SSH_PORT="$(shuf -i 1499-31999 -n 1)"
+
+  useradd $SSH_USER -s /bin/bash
+  usermod -aG sudo $SSH_USER
+
+  echo $SSH_USER:$SSH_USER_PASS | chpasswd
+
+  mkdir -p /home/$SSH_USER/.ssh
+  touch /home/$SSH_USER/.ssh/authorized_keys
+
+  echo $INPUT_SSH_PUB >> /home/$SSH_USER/.ssh/authorized_keys
+
+  chmod 700 /home/$SSH_USER/.ssh/
+  chmod 600 /home/$SSH_USER/.ssh/authorized_keys
+  chown $SSH_USER:$SSH_USER -R /home/$SSH_USER
+  usermod -aG docker $SSH_USER
+
+  sed -i "s/^#\?Port .*/Port $SSH_PORT/" /etc/ssh/sshd_config
+  sed -i "s/^#\?PasswordAuthentication .*/PasswordAuthentication no/" /etc/ssh/sshd_config
+  sed -i "s/^#\?PermitRootLogin .*/PermitRootLogin no/" /etc/ssh/sshd_config
+
+  systemctl daemon-reload
+  systemctl restart ssh
+
+  iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
+  iptables_save
+
+  log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
+}
+
 # ============================================================
 # Main entrypoint
 # ============================================================
@@ -357,16 +404,17 @@ main() {
   init_runtime_vars
   set_domain
 
-  ask "Add new SSH user?" && set_ssh_access
   install_vps
-  ask "Apply iptables firewall?" && set_iptables_config
   set_nets
+
+  ask "Apply iptables firewall?" && set_iptables_config
   ask "Install Fail2ban for SSH?" && set_fail2ban
 
   docker run -v "$WORKSPACE_PATH/caddy/Caddyfile:$WORKSPACE_PATH/Caddyfile" --rm caddy caddy fmt --overwrite "$WORKSPACE_PATH/Caddyfile"
   docker compose -f "$WORKSPACE_PATH/docker-compose.yml" up -d --remove-orphans
 
-  log "New user for ssh: $SSH_USER, password for user: $SSH_USER_PASS. New port for SSH: $SSH_PORT."
+  ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
+
   log "vless://$XRAY_UUID@$SERVER_DOMAIN:443?security=reality&sni=$SERVER_DOMAIN&fp=chrome&pbk=$XRAY_PUB&sid=$SHORT_ID&alpn=h2%2Chttp%2F1.1&type=tcp&flow=xtls-rprx-vision&encryption=none&packetEncoding=xudp#$XRAY_EMAIL"
 }
 
