@@ -332,11 +332,12 @@ judgment_parameters() {
     shift
   done
 
-  (( INSTALL + UNINSTALL == 0 )) && INSTALL="1"
-  (( INSTALL + UNINSTALL > 1 )) && {
+  if (( INSTALL + UNINSTALL == 0 )); then
+    INSTALL=1
+  elif (( INSTALL + UNINSTALL > 1 )); then
     echo "Choose only one action: install | uninstall"
     return 1
-  }
+  fi
 }
 
 # ============================================================
