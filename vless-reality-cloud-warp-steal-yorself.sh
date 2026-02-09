@@ -81,11 +81,12 @@ init_runtime_vars() {
 
 set_domain() {
   read -rp "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
+
   export SERVER_DOMAIN="$(idn <<<"$INPUT_SERVER_DOMAIN")" || die "Invalid domain"
 
   read -ra SERVER_IPS <<<"$(hostname -I)"
-  SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^10\.|^172\.|^192\.168\.'))
 
+  SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^10\.|^172\.|^192\.168\.'))
   RESOLVED_IP="$(dig +short "$SERVER_DOMAIN" | grep -E '^[0-9.]+' | tail -n1)"
 
   if [[ -z "$RESOLVED_IP" ]]; then
@@ -347,8 +348,7 @@ add_new_ssh_user() {
   local PBK_STATUS=$(echo $?)
 
   if [ "$PBK_STATUS" -eq 255 ]; then
-    warn "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
-    exit
+    die "Can't verify the public key. Try again and make sure to include 'ssh-rsa' or 'ssh-ed25519' followed by 'user@pcname' at the end of the file."
   fi
 
   rm ./test_pbk
