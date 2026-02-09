@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -eu
 
 # ============================================================
 # Global constants and paths
@@ -335,8 +335,6 @@ judgment_parameters() {
     return 1
   fi
 }
-
-
 
 add_new_ssh_user() {
   log "Add new user SSH"
