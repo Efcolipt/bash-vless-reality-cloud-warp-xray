@@ -430,7 +430,6 @@ main() {
   ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
 
   docker compose -f "$WORKSPACE_PATH/docker-compose.yml" up -d --remove-orphans
-  docker rmi $XRAY_IMAGE $CADDY_IMAGE
 
   show_info
 }
