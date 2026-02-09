@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
-set -x
-shopt -s inherit_errexit 2>/dev/null || true
-
-trap 'rc=$?; echo "[ERROR] line $LINENO: $BASH_COMMAND (exit=$rc)" >&2; exit $rc' ERR
+set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
@@ -19,8 +15,8 @@ WORKSPACE_PATH="/opt/vps"
 BASE_GIT_PATH="https://raw.githubusercontent.com/Efcolipt/bash-vless-reality-cloud-warp-xray/refs/heads/main"
 GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs/server"
 
-XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
-CADDY_IMAGE="caddy:2.9"
+export XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
+export CADDY_IMAGE="caddy:2.9"
 
 # ============================================================
 # Logging helpers (colored output)
