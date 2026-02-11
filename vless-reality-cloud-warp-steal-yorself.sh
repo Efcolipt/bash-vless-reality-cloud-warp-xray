@@ -82,31 +82,52 @@ init_runtime_vars() {
 # ============================================================
 
 set_domain() {
+  local INPUT_SERVER_DOMAIN
+
   read -rp "Enter your domain:"$'\n' INPUT_SERVER_DOMAIN
 
   export SERVER_DOMAIN="$(idn <<<"$INPUT_SERVER_DOMAIN")" || die "Invalid domain"
 
-  read -ra SERVER_IPS <<<"$(hostname -I)"
+  local SERVER_IPV4="$(hostname -I | tr ' ' '\n' \
+    | grep -E '^[0-9.]+' \
+    | grep -Ev '^10\.|^172\.|^192\.168\.' \
+    | head -n1)"
 
-  SERVER_IPS=($(printf "%s\n" "${SERVER_IPS[@]}" | grep -Ev '^10\.|^172\.|^192\.168\.'))
-  RESOLVED_IP="$(dig +short "$SERVER_DOMAIN" | grep -E '^[0-9.]+' || true | tail -n1)"
+  local SERVER_IPV6="$(ip -6 addr show scope global \
+    | awk '/inet6/ {print $2}' \
+    | cut -d/ -f1 \
+    | head -n1)"
 
-  if [[ -z "$RESOLVED_IP" ]]; then
-    warn "Domain has no DNS record"
-    ask "Proceed without DNS verification?" || exit 1
-    return
+  mapfile -t RESOLVED_A < <(dig +short A "$SERVER_DOMAIN")
+  mapfile -t RESOLVED_AAAA < <(dig +short AAAA "$SERVER_DOMAIN")
+
+  if [[ ${#RESOLVED_A[@]} -eq 0 ]]; then
+    die "Domain has no A record"
   fi
 
-  for ip in "${SERVER_IPS[@]}"; do
-    [[ "$RESOLVED_IP" == "$ip" ]] && {
-      log "✓ DNS record points to this server ($RESOLVED_IP)"
-      return
-    }
-  done
+  if ! printf "%s\n" "${RESOLVED_A[@]}" | grep -qx "$SERVER_IPV4"; then
+    warn "Domain A records: ${RESOLVED_A[*]}"
+    warn "Server IPv4:      $SERVER_IPV4"
+    die "IPv4 mismatch"
+  fi
 
-  warn "Domain resolves to: $RESOLVED_IP"
-  warn "Server IPs: ${SERVER_IPS[*]}"
-  die "DNS record points to a different server"
+  if [[ -n "$SERVER_IPV6" ]]; then
+    if [[ ${#RESOLVED_AAAA[@]} -eq 0 ]]; then
+      die "Server has IPv6 but domain has no AAAA record"
+    fi
+
+    if ! printf "%s\n" "${RESOLVED_AAAA[@]}" | grep -qx "$SERVER_IPV6"; then
+      warn "Domain AAAA records: ${RESOLVED_AAAA[*]}"
+      warn "Server IPv6:         $SERVER_IPV6"
+      die "IPv6 mismatch"
+    fi
+
+    DOMAIN_STRATEGY="UseIP"
+  else
+    DOMAIN_STRATEGY="UseIPv4"
+  fi
+
+  export DOMAIN_STRATEGY
 }
 
 # ============================================================

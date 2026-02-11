@@ -80,7 +80,7 @@
     ],
     "outbounds": [
         {
-            "domainStrategy": "UseIPv4",
+            "domainStrategy": "$DOMAIN_STRATEGY",
             "tag": "freedom",
             "protocol": "freedom",
             "settings": {}
@@ -144,6 +144,8 @@
                     "geosite:reddit",
                     "geosite:openai",
                     "geosite:category-ru",
+                    "domain:microsoft",
+                    "domain:teams.live.com",
                     "domain:openai.com",
                     "domain:ai.com",
                     "domain:developer.mozilla.org",
@@ -184,7 +186,7 @@
             "8.8.8.8",
             "localhost"
         ],
-        "queryStrategy": "UseIPv4"
+        "queryStrategy": "$DOMAIN_STRATEGY"
     },
     "log": {
         "loglevel": "info",
