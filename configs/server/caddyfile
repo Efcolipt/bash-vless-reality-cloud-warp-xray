@@ -1,15 +1,16 @@
 {
     https_port $CADDY_PORT
     default_bind 127.0.0.1
+    auto_https disable_redirects
 
     servers {
-        protocols h1 h2
         listener_wrappers {
-            tls
+                proxy_protocol {
+                        allow 127.0.0.1/32
+                }
+                tls
         }
     }
-
-    auto_https disable_redirects
 }
 
 https://$SERVER_DOMAIN {
@@ -30,9 +31,4 @@ https://$SERVER_DOMAIN {
 http://$SERVER_DOMAIN {
     bind 0.0.0.0
     redir https://$SERVER_DOMAIN{uri} permanent
-}
-
-:80 {
-    bind 0.0.0.0
-    respond 204
 }
