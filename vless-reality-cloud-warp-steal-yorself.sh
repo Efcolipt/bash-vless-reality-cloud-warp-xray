@@ -3,10 +3,6 @@ set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
-# ============================================================
-# Global constants and paths
-# ============================================================
-
 INFO="[INFO]"
 WARN="[WARN]"
 ERROR="[ERROR]"
@@ -18,17 +14,9 @@ GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs/server"
 export XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
 export CADDY_IMAGE="caddy:2.9"
 
-# ============================================================
-# Logging helpers (colored output)
-# ============================================================
-
 die()  { printf '\033[31m%s\033[0m %s\n' "$ERROR" "$*" >&2; exit 1; }
 warn() { printf '\033[33m%s\033[0m %s\n' "$WARN"  "$*" >&2; }
 log()  { printf '\033[32m%s\033[0m %s\n' "$INFO"  "$*"; }
-
-# ============================================================
-# Basic helpers
-# ============================================================
 
 ask() {
   read -rp "$1 [y/N] " a
@@ -38,10 +26,6 @@ ask() {
 require_root() {
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run this script as root"
 }
-
-# ============================================================
-# Platform / package manager detection (Linux-only)
-# ============================================================
 
 detect_platform() {
   [[ "$(uname -s)" == "Linux" ]] || die "This script supports Linux only"
@@ -68,18 +52,12 @@ detect_platform() {
   log "Detected package manager: $PKG_MGR"
 }
 
-# ============================================================
-# Runtime-generated variables
-# ============================================================
-
 init_runtime_vars() {
   export CADDY_PORT="$(shuf -i 32000-62000 -n 1)"
   export XRAY_XHTTP_PATH="$(openssl rand -hex 12)"
-}
 
-# ============================================================
-# Domain and DNS validation
-# ============================================================
+  SSH_PORT="22"
+}
 
 set_domain() {
   local INPUT_SERVER_DOMAIN
@@ -130,26 +108,17 @@ set_domain() {
   export DOMAIN_STRATEGY
 }
 
-# ============================================================
-# Dependency installation (portable)
-# ============================================================
-
 install_packages() {
   case "$PKG_MGR" in
     apt)
-      debconf-set-selections <<EOF
-iptables-persistent iptables-persistent/autosave_v4 boolean true
-iptables-persistent iptables-persistent/autosave_v6 boolean true
-EOF
       $PKG_INSTALL \
-        idn bind9-dnsutils iptables \
-        netfilter-persistent iptables-persistent \
+        idn bind9-dnsutils nftables  \
         curl jq openssl
       ;;
     dnf|yum)
       $PKG_INSTALL epel-release || true
       $PKG_INSTALL \
-        idn bind-utils iptables iptables-services \
+        idn bind-utils nftables  \
         curl jq openssl
       ;;
   esac
@@ -168,38 +137,90 @@ install_deps() {
   fi
 }
 
-# ============================================================
-# iptables helpers
-# ============================================================
-
-iptables_add() {
-  iptables -C "$@" 2>/dev/null || iptables -A "$@"
+svc_stop_disable_mask() {
+  for svc in "$@"; do
+    systemctl stop "$svc" 2>/dev/null || true
+    systemctl disable "$svc" 2>/dev/null || true
+    systemctl mask "$svc" 2>/dev/null || true
+  done
 }
 
-iptables_save() {
-  case "$PKG_MGR" in
-    apt) netfilter-persistent save ;;
-    dnf|yum) service iptables save 2>/dev/null || true ;;
-  esac
+svc_unmask() {
+  for svc in "$@"; do
+    systemctl unmask "$svc" 2>/dev/null || true
+  done
 }
 
-set_iptables_config() {
-  log "Configuring iptables firewall"
+set_firewall() {
+  log "Configuring firewall"
 
-  iptables_add INPUT -p icmp -j ACCEPT
-  iptables_add INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-  iptables_add INPUT -p tcp -m tcp --dport 80 -j ACCEPT
-  iptables_add INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-  iptables_add INPUT -i lo -j ACCEPT
-  iptables_add OUTPUT -o lo -j ACCEPT
+  svc_stop_disable_mask \
+    ufw firewalld iptables ip6tables ebtables \
+    netfilter-persistent iptables-persistent
 
-  iptables -P INPUT DROP
-  iptables_save
+  cat >/etc/nftables.conf <<EOF
+flush ruleset
+
+table inet filter {
+
+  chain input {
+    type filter hook input priority 0;
+    policy drop;
+
+    # Loopback
+    iif lo accept
+
+    # Established connections
+    ct state established,related accept
+
+    # ICMP (v4 + v6)
+    ip protocol icmp accept
+    ip6 nexthdr ipv6-icmp accept
+
+    # SSH
+    tcp dport $SSH_PORT accept
+
+    # HTTP / HTTPS
+    tcp dport 80 accept
+    tcp dport 443 accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0;
+    policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0;
+    policy accept;
+  }
+}
+EOF
+
+  nft -f /etc/nftables.conf || die "Failed to apply nft rules"
+
+  systemctl enable nftables
+  systemctl restart nftables
+
+  nft list ruleset >/dev/null 2>&1 || die "nftables not active"
+
+  log "Firewall successfully configured"
 }
 
-# ============================================================
-# Network tuning (BBR)
-# ============================================================
+reset_firewall() {
+  systemctl stop nftables 2>/dev/null || true
+  systemctl disable nftables 2>/dev/null || true
+
+  nft flush ruleset 2>/dev/null || true
+
+  cat >/etc/nftables.conf <<'EOF'
+flush ruleset
+EOF
+
+  svc_unmask \
+    ufw firewalld iptables ip6tables ebtables \
+    netfilter-persistent iptables-persistent
+}
 
 set_nets() {
   log "Applying network tuning (BBR)"
@@ -238,10 +259,6 @@ EOF
   sysctl --system >/dev/null
 }
 
-# ============================================================
-# Fail2ban
-# ============================================================
-
 set_fail2ban() {
   log "Configuring Fail2ban"
 
@@ -260,10 +277,6 @@ EOF
   systemctl enable fail2ban
   systemctl restart fail2ban
 }
-
-# ============================================================
-# Xray / WARP / Caddy / Docker
-# ============================================================
 
 get_warp() {
   log "Fetching Cloudflare WARP config"
@@ -316,37 +329,38 @@ install_vps() {
   install_xray
 }
 
-# ============================================================
-# Uninstall logic (script-owned only)
-# ============================================================
-
 uninstall() {
+  log "Starting uninstall process"
+
   if command -v docker >/dev/null && [[ -f "$WORKSPACE_PATH/docker-compose.yml" ]]; then
-    log "Docker down"
+    log "Stopping Docker services"
     docker compose -f "$WORKSPACE_PATH/docker-compose.yml" down --remove-orphans || true
   fi
 
-  log "Remove workspace"
+  log "Removing workspace"
   rm -rf "$WORKSPACE_PATH"
 
-  log "Remove bbr tune"
-  rm -f /etc/sysctl.d/99-bbr-tune.conf
-  sysctl --system >/dev/null || true
-
-  if systemctl list-unit-files | grep -q fail2ban; then
-    log "Remove fail2ban"
-    systemctl stop fail2ban || true
-    $PKG_REMOVE fail2ban || true
+  if [[ -f /etc/sysctl.d/99-bbr-tune.conf ]]; then
+    log "Removing BBR tuning"
+    rm -f /etc/sysctl.d/99-bbr-tune.conf
+    sysctl --system >/dev/null || true
   fi
 
-  warn "iptables rules were NOT flushed (SSH-safe)"
+  if systemctl list-unit-files | grep -q fail2ban; then
+    log "Removing Fail2ban"
+    systemctl stop fail2ban 2>/dev/null || true
+    systemctl disable fail2ban 2>/dev/null || true
+    $PKG_REMOVE fail2ban 2>/dev/null || true
+  fi
+
+  ask "Reset firewall (disable nftables)?" && reset_firewall
+
+  warn "SSH configuration was NOT reverted"
+
+  log "Uninstall complete"
 
   exit 0
 }
-
-# ============================================================
-# Argument parsing
-# ============================================================
 
 judgment_parameters() {
   INSTALL=0
@@ -407,16 +421,8 @@ add_new_ssh_user() {
   sed -i "s/^#\?PermitRootLogin .*/PermitRootLogin no/" /etc/ssh/sshd_config
 
   systemctl daemon-reload
-  systemctl restart ssh
-
-  iptables_add INPUT -p tcp -m state --state NEW -m tcp --dport "$SSH_PORT" -j ACCEPT
-
-  iptables_save
+  systemctl restart ssh 2>/dev/null || systemctl restart sshd
 }
-
-# ============================================================
-# Main entrypoint
-# ============================================================
 
 show_info() {
   clear
@@ -429,6 +435,8 @@ show_info() {
 }
 
 main() {
+  pidof systemd >/dev/null 2>&1 || die "systemd is required"
+
   require_root
   judgment_parameters "$@" || return 1
 
@@ -444,11 +452,13 @@ main() {
   set_domain
   install_vps
 
+  ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
+
+
   set_nets
-  set_iptables_config
+  set_firewall
   
   ask "Install Fail2ban for SSH?" && set_fail2ban
-  ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
 
   docker compose -f "$WORKSPACE_PATH/docker-compose.yml" up -d --remove-orphans
 

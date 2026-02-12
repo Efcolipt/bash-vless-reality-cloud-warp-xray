@@ -1,7 +1,7 @@
 {
     "inbounds": [
         {
-            "listen": "0.0.0.0",
+            "listen": "::",
             "port": 443,
             "protocol": "vless",
             "settings": {
@@ -9,17 +9,10 @@
                     {
                         "email": "$XRAY_EMAIL",
                         "id": "$XRAY_UUID",
-                        "flow": "xtls-rprx-vision",
-                        "level": 0
+                        "flow": "xtls-rprx-vision"
                     }
                 ],
-                "decryption": "none",
-                "fallbacks": [
-                    {
-                        "dest": "@uds2xhttp.sock",
-                        "xver": 1
-                    }
-                ]
+                "decryption": "none"
             },
             "streamSettings": {
                 "network": "raw",
@@ -35,37 +28,6 @@
                     "shortIds": [
                         "$SHORT_ID"
                     ]
-                }
-            },
-            "sniffing": {
-                "enabled": true,
-                "destOverride": [
-                    "http",
-                    "tls",
-                    "quic"
-                ]
-            }
-        },
-        {
-            "tag": "VLESS-XHTTP-REALITY",
-            "listen": "@uds2xhttp.sock",
-            "protocol": "vless",
-            "settings": {
-                "clients": [
-                    {
-                        "email": "$XRAY_EMAIL",
-                        "id": "$XRAY_UUID"
-                    }
-                ],
-                "decryption": "none"
-            },
-            "streamSettings": {
-                "network": "xhttp",
-                "xhttpSettings": {
-                    "path": "/$XRAY_XHTTP_PATH"
-                },
-                "sockopt": {
-                    "acceptProxyProtocol": true
                 }
             },
             "sniffing": {

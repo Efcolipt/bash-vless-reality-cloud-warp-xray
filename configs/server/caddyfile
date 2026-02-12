@@ -1,54 +1,38 @@
 {
-        https_port $CADDY_PORT
-        default_bind 127.0.0.1
-        servers {
-                protocols h1 h2
-                listener_wrappers {
-                        proxy_protocol {
-                                allow 127.0.0.1/32
-                        }
-                        tls
-                }
+    https_port $CADDY_PORT
+    default_bind 127.0.0.1
+
+    servers {
+        protocols h1 h2
+        listener_wrappers {
+            tls
         }
-        auto_https disable_redirects
+    }
+
+    auto_https disable_redirects
 }
 
 https://$SERVER_DOMAIN {
-        root * /srv
-        file_server
+    root * /srv
+    file_server
 
+    header {
+        -Server
+    }
+
+    handle_errors {
         header {
-                -Server
+            -Server
         }
-
-        handle_errors {
-                header {
-                        -Server
-                }
-        }
+    }
 }
 
 http://$SERVER_DOMAIN {
-        bind 0.0.0.0
-        redir https://$SERVER_DOMAIN{uri} permanent
-
-        header {
-                -Server
-        }
-
-        handle_errors {
-                header {
-                        -Server
-                }
-        }
-}
-
-:$CADDY_PORT {
-        tls internal
-        respond 204
+    bind 0.0.0.0
+    redir https://$SERVER_DOMAIN{uri} permanent
 }
 
 :80 {
-        bind 0.0.0.0
-        respond 204
+    bind 0.0.0.0
+    respond 204
 }
