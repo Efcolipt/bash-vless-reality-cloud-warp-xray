@@ -337,9 +337,10 @@ install_geodata() {
   curl -fsSL -o "$FILE_GEOSITE.sha256sum" "$GEOSITE_URL.sha256sum"
 
 
-  sha256sum -c "$FILE_GEOIP.sha256sum"
+  sha256sum -c "$FILE_GEOIP.sha256sum" >/dev/null 2>&1
+
   # Fix https://github.com/runetfreedom/russia-blocked-geosite/pull/16
-  echo "$(cut -d ' ' -f1 "$FILE_GEOSITE.sha256sum")  geosite.dat" | sha256sum -c -
+  echo "$(cut -d ' ' -f1 "$FILE_GEOSITE.sha256sum")  $FILE_GEOSITE" | sha256sum -c - >/dev/null 2>&1
 
   local changed=0
 
@@ -352,7 +353,7 @@ install_geodata() {
   done
 
   if [[ "${UPDATE_GEODATA:-0}" -eq 1 && "$changed" -eq 1 ]]; then
-    docker restart xray 2>/dev/null || true
+    docker restart xray >/dev/null 2>&1 || true
   fi
 
   rm -rf "$TMP_DIR"
