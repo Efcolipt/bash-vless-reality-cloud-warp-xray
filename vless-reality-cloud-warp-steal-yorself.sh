@@ -318,29 +318,30 @@ install_xray() {
 install_geodata() {
   local GEODATA_PATH="$WORKSPACE_PATH/geodata"
 
+  local FILE_GEOIP="geoip.dat"
+  local FILE_GEOSITE="geoip.dat"
+
   mkdir -p "$GEODATA_PATH"
 
-  local GEOIP_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat"
-  local GEOSITE_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat"
+  local GEOIP_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/$FILE_GEOIP"
+  local GEOSITE_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/$FILE_GEOSITE"
 
   local TMP_DIR="$(mktemp -d)"
 
-  trap 'rm -rf "$TMP_DIR"' EXIT
+  cd "$TMP_DIR" || exit
 
-  cd "$TMP_DIR" || exit 1
+  curl -fsSL -o "$FILE_GEOIP" "$GEOIP_URL"
+  curl -fsSL -o "$FILE_GEOIP.sha256sum" "$GEOIP_URL.sha256sum"
 
-  curl -fsSL -o geoip.dat "$GEOIP_URL"
-  curl -fsSL -o geoip.dat.sha256sum "$GEOIP_URL.sha256sum"
+  curl -fsSL -o "$FILE_GEOSITE" "$GEOSITE_URL"
+  curl -fsSL -o "$FILE_GEOSITE.sha256sum" "$GEOSITE_URL.sha256sum"
 
-  curl -fsSL -o geosite.dat "$GEOSITE_URL"
-  curl -fsSL -o geosite.dat.sha256sum "$GEOSITE_URL.sha256sum"
-
-  sha256sum -c geoip.dat.sha256sum
-  sha256sum -c geosite.dat.sha256sum
+  sha256sum -c "$FILE_GEOIP.sha256sum"
+  sha256sum -c "$FILE_GEOSITE.sha256sum"
 
   local changed=0
 
-  for f in geoip.dat geosite.dat; do
+  for f in "$FILE_GEOIP" "$FILE_GEOSITE"; do
     if [ ! -f "$GEODATA_PATH/$f" ] || ! cmp -s "$f" "$GEODATA_PATH/$f"; then
       mv "$f" "$GEODATA_PATH/$f"
       mv "$f.sha256sum" "$GEODATA_PATH/$f.sha256sum"
@@ -351,6 +352,8 @@ install_geodata() {
   if [[ "${UPDATE_GEODATA:-0}" -eq 1 && "$changed" -eq 1 ]]; then
     docker restart xray 2>/dev/null || true
   fi
+
+  rm -rf "$TMP_DIR"
 }
 
 setup_geodata_cron() {
