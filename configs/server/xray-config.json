@@ -98,23 +98,15 @@
                 "type": "field",
                 "outboundTag": "warp",
                 "domain": [
-                    "geosite:netflix",
+                    "geosite:category-ru",
                     "geosite:spotify",
                     "geosite:nvidia",
                     "geosite:tiktok",
                     "geosite:unity",
                     "geosite:reddit",
                     "geosite:openai",
-                    "geosite:category-ru",
-                    "domain:microsoft",
-                    "domain:teams.live.com",
-                    "domain:openai.com",
-                    "domain:ai.com",
-                    "domain:developer.mozilla.org",
-                    "domain:behance.net",
-                    "regexp:.*\\.xn--$",
-                    "regexp:.*\\.ru$",
-                    "regexp:.*\\.su$"
+                    "domain:docker",
+                    "domain:microsoft"
                 ]
             },
             {

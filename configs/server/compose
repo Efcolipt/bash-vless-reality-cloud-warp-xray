@@ -18,3 +18,4 @@ services:
     network_mode: host
     volumes:
       - ./xray:/etc/xray
+      - ./geodata:/usr/share/xray/

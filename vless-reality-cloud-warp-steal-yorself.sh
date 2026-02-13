@@ -113,13 +113,13 @@ install_packages() {
     apt)
       $PKG_INSTALL \
         idn bind9-dnsutils nftables  \
-        curl jq openssl
+        curl jq openssl cron
       ;;
     dnf|yum)
       $PKG_INSTALL epel-release || true
       $PKG_INSTALL \
         idn bind-utils nftables  \
-        curl jq openssl
+        curl jq openssl cronie
       ;;
   esac
 }
@@ -310,9 +310,61 @@ install_xray() {
   get_warp
 
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/xray-config.json" | envsubst >"$WORKSPACE_PATH/xray/config.json"
+  
+  install_geodata
+  setup_geodata_cron
 }
 
-instsall_caddy() {
+install_geodata() {
+  local GEODATA_PATH="$WORKSPACE_PATH/geodata"
+
+  mkdir -p "$GEODATA_PATH"
+
+  local GEOIP_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat"
+  local GEOSITE_URL="https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat"
+
+  local TMP_DIR="$(mktemp -d)"
+
+  trap 'rm -rf "$TMP_DIR"' EXIT
+
+  cd "$TMP_DIR" || exit 1
+
+  curl -fsSL -o geoip.dat "$GEOIP_URL"
+  curl -fsSL -o geoip.dat.sha256sum "$GEOIP_URL.sha256sum"
+
+  curl -fsSL -o geosite.dat "$GEOSITE_URL"
+  curl -fsSL -o geosite.dat.sha256sum "$GEOSITE_URL.sha256sum"
+
+  sha256sum -c geoip.dat.sha256sum
+  sha256sum -c geosite.dat.sha256sum
+
+  local changed=0
+
+  for f in geoip.dat geosite.dat; do
+    if [ ! -f "$GEODATA_PATH/$f" ] || ! cmp -s "$f" "$GEODATA_PATH/$f"; then
+      mv "$f" "$GEODATA_PATH/$f"
+      mv "$f.sha256sum" "$GEODATA_PATH/$f.sha256sum"
+      changed=1
+    fi
+  done
+
+  if [[ "${UPDATE_GEODATA:-0}" -eq 1 && "$changed" -eq 1 ]]; then
+    docker restart xray 2>/dev/null || true
+  fi
+}
+
+setup_geodata_cron() {
+  systemctl enable cron 2>/dev/null || systemctl enable crond 2>/dev/null || true
+  systemctl restart cron 2>/dev/null || systemctl restart crond 2>/dev/null || true
+
+  local SCRIPT_PATH="$(realpath "$0" 2>/dev/null || echo "$0")"
+
+  local CRON_JOB="0 */6 * * * $SCRIPT_PATH update-geodata"
+
+  (crontab -l 2>/dev/null | grep -v update-geodata; echo "$CRON_JOB") | crontab -
+}
+
+install_caddy() {
   mkdir -p "$WORKSPACE_PATH/caddy/templates"
 
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/confluence.html" | envsubst >"$WORKSPACE_PATH/caddy/templates/index.html"
@@ -322,10 +374,10 @@ instsall_caddy() {
 }
 
 install_vps() {
-  mkdir -p $WORKSPACE_PATH
+  mkdir -p "$WORKSPACE_PATH"
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/compose" | envsubst >"$WORKSPACE_PATH/docker-compose.yml"
 
-  instsall_caddy
+  install_caddy
   install_xray
 }
 
@@ -365,20 +417,22 @@ uninstall() {
 judgment_parameters() {
   INSTALL=0
   REMOVE=0
+  UPDATE_GEODATA=0
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       install) INSTALL=1 ;;
       uninstall|remove) REMOVE=1 ;;
+      update-geodata) UPDATE_GEODATA=1 ;;
       *) echo "Unknown option: $1"; return 1 ;;
     esac
     shift
   done
 
-  if (( INSTALL + REMOVE == 0 )); then
+ if (( INSTALL + REMOVE + UPDATE_GEODATA == 0 )); then
     INSTALL=1
-  elif (( INSTALL + REMOVE > 1 )); then
-    echo "Choose only one action: install | uninstall"
+  elif (( INSTALL + REMOVE + UPDATE_GEODATA > 1 )); then
+    echo "Choose only one action: install | uninstall | update-geodata"
     return 1
   fi
 }
@@ -442,6 +496,11 @@ main() {
 
   detect_platform
 
+  if [[ "$UPDATE_GEODATA" -eq 1 ]]; then
+    install_geodata
+    exit 0
+  fi
+
   if [[ "$REMOVE" -eq 1 ]]; then
     uninstall
   fi
@@ -453,7 +512,6 @@ main() {
   install_vps
 
   ask "Add new SSH user (access by pubkey)?" && add_new_ssh_user
-
 
   set_nets
   set_firewall
