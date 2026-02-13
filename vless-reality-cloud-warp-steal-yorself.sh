@@ -319,7 +319,7 @@ install_geodata() {
   local GEODATA_PATH="$WORKSPACE_PATH/geodata"
 
   local FILE_GEOIP="geoip.dat"
-  local FILE_GEOSITE="geoip.dat"
+  local FILE_GEOSITE="geosite.dat"
 
   mkdir -p "$GEODATA_PATH"
 
