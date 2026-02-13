@@ -82,31 +82,9 @@
         "rules": [
             {
                 "type": "field",
-                "outboundTag": "warp",
-                "ip": [
-                    "geoip:ru"
-                ]
-            },
-            {
-                "type": "field",
                 "outboundTag": "block",
                 "domain": [
                     "geosite:category-ads-all"
-                ]
-            },
-            {
-                "type": "field",
-                "outboundTag": "warp",
-                "domain": [
-                    "geosite:category-ru",
-                    "geosite:spotify",
-                    "geosite:nvidia",
-                    "geosite:tiktok",
-                    "geosite:unity",
-                    "geosite:reddit",
-                    "geosite:openai",
-                    "domain:docker",
-                    "domain:microsoft"
                 ]
             },
             {
@@ -121,6 +99,41 @@
                 "outboundTag": "block",
                 "protocol": [
                     "bittorrent"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "warp",
+                "domain": [
+                    "geosite:spotify",
+                    "geosite:nvidia",
+                    "geosite:tiktok",
+                    "geosite:unity",
+                    "geosite:reddit",
+                    "geosite:openai",
+                    "domain:docker",
+                    "domain:microsoft"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "direct",
+                "domain": [
+                    "geosite:ru-blocked"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "warp",
+                "ip": [
+                    "geoip:ru"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "warp",
+                "domain": [
+                    "geosite:category-ru"
                 ]
             }
         ]
