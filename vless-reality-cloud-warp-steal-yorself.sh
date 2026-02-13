@@ -336,11 +336,10 @@ install_geodata() {
   curl -fsSL -o "$FILE_GEOSITE" "$GEOSITE_URL"
   curl -fsSL -o "$FILE_GEOSITE.sha256sum" "$GEOSITE_URL.sha256sum"
 
-  pwd
-  ls -la
 
   sha256sum -c "$FILE_GEOIP.sha256sum"
-  sha256sum -c "$FILE_GEOSITE.sha256sum"
+  # Fix https://github.com/runetfreedom/russia-blocked-geosite/pull/16
+  echo "$(cut -d ' ' -f1 "$FILE_GEOSITE.sha256sum")  geosite.dat" | sha256sum -c -
 
   local changed=0
 
