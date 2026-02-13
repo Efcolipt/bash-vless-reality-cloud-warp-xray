@@ -118,6 +118,14 @@
             {
                 "type": "field",
                 "outboundTag": "direct",
+                "ip": [
+                    "geoip:ru-blocked",
+                    "geoip:telegram"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "direct",
                 "domain": [
                     "geosite:ru-blocked"
                 ]
