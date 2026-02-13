@@ -117,7 +117,7 @@
             },
             {
                 "type": "field",
-                "outboundTag": "direct",
+                "outboundTag": "freedom",
                 "ip": [
                     "geoip:ru-blocked",
                     "geoip:telegram"
@@ -125,7 +125,7 @@
             },
             {
                 "type": "field",
-                "outboundTag": "direct",
+                "outboundTag": "freedom",
                 "domain": [
                     "geosite:ru-blocked"
                 ]
