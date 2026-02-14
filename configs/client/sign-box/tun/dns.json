@@ -1,0 +1,34 @@
+{
+  "servers": [
+    {
+      "tag": "remote",
+      "type": "tcp",
+      "server": "8.8.8.8",
+      "detour": "proxy"
+    },
+    {
+      "tag": "local",
+      "server": "77.88.8.8",
+      "type": "udp"
+    }
+  ],
+  "rules": [
+    {
+      "rule_set": [
+        "geosite-category-ads-all"
+      ],
+      "action": "predefined",
+      "rcode": "NXDOMAIN"
+    },
+    {
+      "rule_set": [
+        "geosite-category-ru",
+        "geoip-ru"
+      ],
+      "server": "local",
+      "strategy": "ipv4_only"
+    }
+  ],
+  "strategy": "ipv4_only",
+  "final": "remote"
+}
