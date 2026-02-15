@@ -1,0 +1,30 @@
+[
+  {
+    "type": "field",
+    "outboundTag": "block",
+    "domain": ["geosite:category-ads-all"],
+    "enabled": true,
+    "remarks": "Блок рекламы"
+  },
+  {
+    "type": "field",
+    "outboundTag": "direct",
+    "ip": ["geoip:ru", "geoip:private"],
+    "enabled": true,
+    "remarks": "RU и локалка напрямую"
+  },
+  {
+    "type": "field",
+    "outboundTag": "direct",
+    "domain": ["geosite:private", "geosite:category-ru"],
+    "enabled": true,
+    "remarks": "RU сайты напрямую"
+  },
+  {
+    "type": "field",
+    "port": "0-65535",
+    "outboundTag": "proxy",
+    "enabled": true,
+    "remarks": "Все остальное через прокси"
+  }
+]
