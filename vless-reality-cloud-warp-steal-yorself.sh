@@ -11,7 +11,7 @@ WORKSPACE_PATH="/opt/vps"
 BASE_GIT_PATH="https://raw.githubusercontent.com/Efcolipt/bash-vless-reality-cloud-warp-xray/refs/heads/main"
 GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs/server"
 
-export XRAY_IMAGE="ghcr.io/xtls/xray-core:26.2.6"
+export XRAY_IMAGE="ghcr.io/xtls/xray-core:latest"
 export CADDY_IMAGE="caddy:2.9"
 
 die()  { printf '\033[31m%s\033[0m %s\n' "$ERROR" "$*" >&2; exit 1; }
