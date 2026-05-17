@@ -235,13 +235,13 @@ set_nets() {
   cat >/etc/sysctl.d/99-bbr-tune.conf <<'EOF'
 net.core.rmem_max=67108864
 net.core.wmem_max=67108864
-net.core.rmem_default=4194304
-net.core.wmem_default=4194304
+net.core.rmem_default=8388608
+net.core.wmem_default=8388608
 
-net.core.netdev_max_backlog=5000
-net.core.somaxconn=2048
+net.core.netdev_max_backlog=10000
+net.core.somaxconn=4096
 
-net.ipv4.udp_mem=16384 32768 65536
+net.ipv4.udp_mem=65536 131072 262144
 net.ipv4.udp_rmem_min=8192
 net.ipv4.udp_wmem_min=8192
 
@@ -254,7 +254,7 @@ net.ipv4.tcp_congestion_control=bbr
 net.ipv4.tcp_mtu_probing=1
 net.ipv4.tcp_slow_start_after_idle=0
 net.ipv4.tcp_syncookies=1
-net.ipv4.tcp_max_syn_backlog=4096
+net.ipv4.tcp_max_syn_backlog=8192
 EOF
 
   sysctl --system >/dev/null
