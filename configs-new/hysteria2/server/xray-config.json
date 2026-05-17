@@ -1,0 +1,52 @@
+{
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 40000,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "wireguard",
+      "tag": "warp",
+      "settings": {
+        "secretKey": "$WARP_PRIV",
+        "address": [
+          "172.16.0.2/32",
+          "$WARP_V6/128"
+        ],
+        "peers": [
+          {
+            "endpoint": "engage.cloudflareclient.com:2408",
+            "allowedIPs": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
+            "publicKey": "$WARP_PUB"
+          }
+        ],
+        "mtu": 1280,
+        "reserved": "$WARP_RESERVED",
+        "workers": 2,
+        "domainStrategy": "ForceIP"
+      }
+    }
+  ],
+  "log": {
+    "loglevel": "info",
+    "dnslogs": false
+  }
+}

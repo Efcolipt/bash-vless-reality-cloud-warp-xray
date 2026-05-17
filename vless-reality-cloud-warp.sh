@@ -229,9 +229,8 @@ set_xray_config() {
       {
         "type": "field",
         "domain": [
-          "geosite:openai",      "geosite:category-ru", 
-          "domain:ru",           "domain:su",           "domain:by",
-          "domain:xn--p1ai"
+          "geosite:openai",
+          "geosite:category-ru"
         ],
         "outboundTag": "warp"
       },

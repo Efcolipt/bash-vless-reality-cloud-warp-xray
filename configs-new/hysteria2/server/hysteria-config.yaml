@@ -1,0 +1,54 @@
+listen: :443
+
+tls:
+  cert: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$SERVER_DOMAIN/$SERVER_DOMAIN.crt
+  key: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$SERVER_DOMAIN/$SERVER_DOMAIN.key
+  sniGuard: dns-san
+
+auth:
+  type: password
+  password: "$HYSTERIA_PASSWORD"
+
+quic:
+  initStreamReceiveWindow: 8388608
+  maxStreamReceiveWindow: 8388608
+  initConnReceiveWindow: 20971520
+  maxConnReceiveWindow: 20971520
+  maxIdleTimeout: 30s
+  maxIncomingStreams: 1024
+  disablePathMTUDiscovery: false
+
+congestion:
+  type: bbr
+
+disableUDP: false
+udpIdleTimeout: 60s
+
+sniff:
+  enable: true
+  timeout: 2s
+  rewriteDomain: false
+  tcpPorts: 80,443
+  udpPorts: all
+
+acl:
+  file: /etc/hysteria/acl.txt
+  geoip: /usr/local/share/hysteria/geoip.dat
+  geosite: /usr/local/share/hysteria/geosite.dat
+
+outbounds:
+  - name: direct
+    type: direct
+    direct:
+      mode: auto
+
+  - name: warp
+    type: socks5
+    socks5:
+      addr: 127.0.0.1:40000
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://$SERVER_DOMAIN
+    rewriteHost: true

@@ -1,0 +1,35 @@
+services:
+  caddy:
+    image: $CADDY_IMAGE
+    container_name: caddy
+    restart: always
+    network_mode: host
+    volumes:
+      - ./caddy/data:/data
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/templates:/srv
+
+  xray:
+    image: $XRAY_IMAGE
+    user: root
+    command: run -c /etc/xray/config.json
+    container_name: xray
+    restart: always
+    network_mode: host
+    volumes:
+      - ./xray:/etc/xray
+
+  hysteria2:
+    image: $HYSTERIA_IMAGE
+    user: root
+    command: server -c /etc/hysteria/config.yaml
+    container_name: hysteria2
+    restart: always
+    network_mode: host
+    depends_on:
+      - caddy
+      - xray
+    volumes:
+      - ./hysteria:/etc/hysteria
+      - ./geodata:/usr/local/share/hysteria
+      - ./caddy/data:/caddy-data:ro
