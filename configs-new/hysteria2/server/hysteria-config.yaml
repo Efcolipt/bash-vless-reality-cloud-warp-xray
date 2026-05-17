@@ -10,19 +10,21 @@ auth:
   password: "$HYSTERIA_PASSWORD"
 
 quic:
-  initStreamReceiveWindow: 8388608
-  maxStreamReceiveWindow: 8388608
-  initConnReceiveWindow: 20971520
-  maxConnReceiveWindow: 20971520
+  initStreamReceiveWindow: 26843545
+  maxStreamReceiveWindow: 26843545
+  initConnReceiveWindow: 67108864
+  maxConnReceiveWindow: 67108864
   maxIdleTimeout: 30s
   maxIncomingStreams: 1024
   disablePathMTUDiscovery: false
 
+ignoreClientBandwidth: false
+
 congestion:
   type: bbr
+  bbrProfile: aggressive
 
-disableUDP: false
-udpIdleTimeout: 60s
+speedTest: true
 
 sniff:
   enable: true
