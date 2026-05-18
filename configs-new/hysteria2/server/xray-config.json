@@ -1,4 +1,8 @@
 {
+  "log": {
+    "loglevel": "warning",
+    "dnsLog": false
+  },
   "inbounds": [
     {
       "listen": "127.0.0.1",
@@ -43,10 +47,34 @@
         "workers": 2,
         "domainStrategy": "ForceIP"
       }
+    },
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": {
+        "domainStrategy": "UseIP"
+      }
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
     }
   ],
-  "log": {
-    "loglevel": "info",
-    "dnslogs": false
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "10.0.0.0/8",
+          "172.16.0.0/12",
+          "192.168.0.0/16",
+          "169.254.0.0/16",
+          "224.0.0.0/4",
+          "255.255.255.255"
+        ]
+      }
+    ]
   }
 }

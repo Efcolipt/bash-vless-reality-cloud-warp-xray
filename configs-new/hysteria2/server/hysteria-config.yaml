@@ -15,7 +15,16 @@ congestion:
   type: bbr
   bbrProfile: aggressive
 
+quic:
+  initStreamReceiveWindow: 26843545 
+  maxStreamReceiveWindow: 26843545 
+  initConnReceiveWindow: 67108864 
+  maxConnReceiveWindow: 67108864
+
 speedTest: true
+
+disableUDP: false
+udpIdleTimeout: 60s
 
 sniff:
   enable: true

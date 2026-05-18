@@ -14,6 +14,7 @@ GIT_SERVER_CONFIGS_PATH="$BASE_GIT_PATH/configs-new/hysteria2/server"
 export XRAY_IMAGE="ghcr.io/xtls/xray-core:latest"
 export HYSTERIA_IMAGE="tobyxdd/hysteria:latest"
 export CADDY_IMAGE="caddy:2.9"
+export HYSTERIA_PORT_RANGE=20000-50000
 
 die() {
   printf '\033[31m%s\033[0m %s\n' "$ERROR" "$*" >&2
@@ -95,8 +96,8 @@ set_domain() {
 
   [[ -n "$SERVER_IPV4" ]] || die "Could not detect public IPv4"
 
-  mapfile -t RESOLVED_A < <(dig +short A "$SERVER_DOMAIN")
-  mapfile -t RESOLVED_AAAA < <(dig +short AAAA "$SERVER_DOMAIN")
+  mapfile -t RESOLVED_A < <(dig @8.8.8.8 +short A "$SERVER_DOMAIN")
+  mapfile -t RESOLVED_AAAA < <(dig @8.8.8.8 +short AAAA "$SERVER_DOMAIN")
 
   if [[ ${#RESOLVED_A[@]} -eq 0 ]]; then
     die "Domain has no A record"
@@ -180,6 +181,11 @@ set_firewall() {
     ufw firewalld iptables ip6tables ebtables \
     netfilter-persistent iptables-persistent
 
+  local INGRESS_INTERFACE
+  INGRESS_INTERFACE="$(ip route show default | awk '{print $5; exit}')"
+
+  [[ -n "$INGRESS_INTERFACE" ]] || die "Failed to detect ingress interface"
+
   cat >/etc/nftables.conf <<EOF
 flush ruleset
 
@@ -195,7 +201,7 @@ table inet filter {
     ip6 nexthdr ipv6-icmp accept
 
     tcp dport { 80, 443, $SSH_PORT } accept
-    udp dport 443 accept
+    udp dport { 443, $HYSTERIA_PORT_RANGE } accept
   }
 
   chain forward {
@@ -204,6 +210,13 @@ table inet filter {
 
   chain output {
     type filter hook output priority 0; policy accept;
+  }
+}
+
+table inet hysteria_porthopping {
+  chain prerouting {
+    type nat hook prerouting priority dstnat; policy accept;
+    iifname "$INGRESS_INTERFACE" udp dport $HYSTERIA_PORT_RANGE counter redirect to :443
   }
 }
 EOF
@@ -396,8 +409,8 @@ install_caddy() {
 
   mkdir -p "$WORKSPACE_PATH/caddy/templates"
 
-  wget -qO- "$GIT_SERVER_CONFIGS_PATH/confluence.html" \
-    | envsubst >"$WORKSPACE_PATH/caddy/templates/index.html"
+  wget -qO "$WORKSPACE_PATH/caddy/templates/index.html" \
+    "$GIT_SERVER_CONFIGS_PATH/confluence.html"
 
   wget -qO- "$GIT_SERVER_CONFIGS_PATH/caddyfile" \
     | envsubst >"$WORKSPACE_PATH/caddy/Caddyfile"
@@ -539,7 +552,7 @@ New port for SSH: $SSH_PORT."
   fi
 
   log "Hysteria2 URI:"
-  log "hysteria2://$HYSTERIA_PASSWORD@$SERVER_DOMAIN:443/?sni=$SERVER_DOMAIN#$HYSTERIA_NAME"
+  log "hysteria2://$HYSTERIA_PASSWORD@$SERVER_DOMAIN:$HYSTERIA_PORT_RANGE/?sni=$SERVER_DOMAIN#$HYSTERIA_NAME"
 
   log "Client note:"
   log "Set client bandwidth manually if your client supports it. Example: up 50 mbps, down 200 mbps."

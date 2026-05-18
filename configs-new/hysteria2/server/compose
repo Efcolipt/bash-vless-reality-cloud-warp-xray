@@ -29,6 +29,8 @@ services:
     depends_on:
       - caddy
       - xray
+    extra_hosts:
+      - "$SERVER_DOMAIN:127.0.0.1"
     volumes:
       - ./hysteria:/etc/hysteria
       - ./geodata:/usr/local/share/hysteria
