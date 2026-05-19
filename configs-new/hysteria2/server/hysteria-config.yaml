@@ -16,19 +16,22 @@ congestion:
   bbrProfile: aggressive
 
 quic:
-  initStreamReceiveWindow: 26843545 
-  maxStreamReceiveWindow: 26843545 
-  initConnReceiveWindow: 67108864 
+  initStreamReceiveWindow: 26843545
+  maxStreamReceiveWindow: 26843545
+  initConnReceiveWindow: 67108864
   maxConnReceiveWindow: 67108864
+  maxIdleTimeout: 120s
+  maxIncomingStreams: 1024
+  disablePathMTUDiscovery: false
 
-speedTest: true
+speedTest: false
 
 disableUDP: false
-udpIdleTimeout: 60s
+udpIdleTimeout: 120s
 
 sniff:
   enable: true
-  timeout: 2s
+  timeout: 1s
   rewriteDomain: false
   tcpPorts: 80,443
   udpPorts: all

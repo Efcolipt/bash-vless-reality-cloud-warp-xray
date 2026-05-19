@@ -1,9 +1,4 @@
 reject(geosite:category-ads-all)
-reject(geoip:private)
-
-direct(geoip:ru-blocked)
-direct(geoip:telegram)
-direct(geosite:ru-blocked)
 
 warp(geosite:spotify)
 warp(geosite:nvidia)
@@ -11,7 +6,6 @@ warp(geosite:tiktok)
 warp(geosite:unity)
 warp(geosite:reddit)
 warp(geosite:openai)
-
 warp(suffix:docker.com)
 warp(suffix:docker.io)
 warp(suffix:dockerusercontent.com)
