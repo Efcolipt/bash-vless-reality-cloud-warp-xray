@@ -20,12 +20,14 @@ xhttp_port=11849
 hysteria_port=11274
 hysteria_hop_ports=20000-50000
 decoy_port=8443
+# Minimal Debian images ship without sudo, which the SSH user needs.
+base_packages=(curl jq openssl nftables fail2ban sudo)
 
 install_node() {
   local domain="${1:?usage: install.sh node <domain> [ssh public key]}" public_key="${2:-}"
   require_root
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
-  install_packages curl jq openssl nftables fail2ban
+  install_packages "${base_packages[@]}"
   tune_kernel
   [[ -z "$public_key" ]] || harden_ssh "$public_key"
   install_panel "$domain"
@@ -45,7 +47,7 @@ install_node() {
 install_head() {
   local public_key="${1:-}"
   require_root
-  install_packages curl jq openssl nftables fail2ban
+  install_packages "${base_packages[@]}"
   tune_kernel
   [[ -z "$public_key" ]] || harden_ssh "$public_key"
   install_panel
