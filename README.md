@@ -10,10 +10,11 @@ As root on a fresh Debian 12/13 or Ubuntu 24.04 server.
 apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh node vpn.example.com "ssh-ed25519 AAAA... you@laptop"
 ```
 
-**Bridge**, a node in Russia in front of a node abroad (see [Bridge](#bridge-in-russia)). The exit link is a
-VLESS REALITY (TCP) link of a client on the exit node:
+**Exit and bridge**, a node abroad that only a node in the users' country talks to (see [Bridge](#bridge)). The
+exit first, with the bridge's IP; it prints the link the bridge needs:
 
 ```bash
+apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh exit de.example.com <bridge ip> "ssh-ed25519 AAAA... you@laptop"
 apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh bridge ru.example.com "vless://…@exit-ip:443?security=reality&…" "ssh-ed25519 AAAA... you@laptop"
 ```
 
@@ -44,6 +45,8 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `XRAY_VERSION` | `v26.11.9` | Xray core the panel runs. |
 | `XUI_ACME_EMAIL` | none | Email for Let's Encrypt notices. |
 | `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
+| `HEAD_IP` | none | The head's IP: the node's panel answers only it, and the subscription port stays closed. |
+| `COUNTRY` | `ru` | The bridge's country code: its sites leave from the bridge directly. |
 
 ## What a node gets
 
@@ -55,6 +58,9 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | random/tcp | 3x-ui panel, HTTPS. |
 | 2096/tcp | Subscription, HTTPS. |
 | 80/tcp | Let's Encrypt renewals. |
+
+An exit and a bridge get VLESS REALITY on 443/tcp alone, the profile that looks most like an ordinary HTTPS site;
+the exit takes it only from its bridge. With `HEAD_IP` the panel port is open to the head only and 2096 is closed.
 
 - **Self-steal REALITY.** REALITY borrows the TLS handshake of the server's own site: Caddy serves a decoy page on
   127.0.0.1 with the domain's certificate, for any SNI. Clients send the server's domain as SNI, it resolves to this
@@ -72,8 +78,10 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
   addresses; sites blocked in Russia direct; Russian sites through WARP, because many of them refuse foreign
   hosting addresses. Spotify, Reddit, NVIDIA and others stay direct: through WARP they time out or stall.
   WARP dials Cloudflare's IPv4 endpoint: by name the core can pick the AAAA, which never answers.
-- **System.** BBR with fq and buffers sized for QUIC, an nftables firewall that drops everything but SSH and the
-  ports above, fail2ban on SSH, Xray pinned to `XRAY_VERSION`, Russian geodata refreshed every night at 04:00
+- **System.** Packages and the kernel upgraded first (the summary asks for a reboot when the kernel changed), BBR
+  with fq and buffers sized for QUIC, MPTCP off (Go listens with it by default, and listening IPv4 MPTCP sockets
+  gave remote root on unpatched kernels), an nftables firewall that drops everything but SSH and the ports above,
+  fail2ban on SSH, Xray pinned to `XRAY_VERSION`, Russian geodata refreshed every night at 04:00
   Moscow time (a refresh restarts the core, so it runs when nobody is online).
 
 ## Several nodes behind a head
@@ -86,20 +94,25 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 
 The head's address is in every user's subscription link, so keep it off the servers that carry traffic.
 
-## Bridge in Russia
+## Bridge
 
-Some providers block the address of a foreign server for their subscribers within days. A bridge is a node on a
-Russian server: users connect to its domestic address, Russian sites leave from it directly (and see a Russian
-address), and everything else, sites blocked in Russia included, goes on to the exit node over VLESS REALITY.
-The exit keeps its own routing (WARP, exceptions); only the bridge's address is in user subscriptions.
+Some providers block the address of a foreign server for their subscribers within days. A bridge is a node in the
+users' own country: users connect to its domestic address, the country's sites (`geosite:category-<COUNTRY>`,
+`geoip:<COUNTRY>`) leave from it directly and see a local address, and everything else goes on to the exit node
+over VLESS REALITY. The exit keeps its own routing (WARP, exceptions). Set `COUNTRY` to a code that has both lists
+in the geodata (`ru`, `ir`, …).
 
-1. On the exit node, add a client for the bridge on the VLESS REALITY (TCP) inbound and copy its link.
-2. Install the bridge with that link (see [Install](#install)) and attach it to the head like any node.
-3. Attach the users to the bridge's inbounds. Keep their exit profiles too: where the exit is not blocked,
-   clients that pick the fastest server use it directly.
+Providers block by address, whatever the SNI, and an address that carries many users' traffic goes first. So the
+exit's address must never reach a subscription: users get the bridge, and the exit answers the bridge alone.
 
-Check from the bridge that the exit answers before moving users: some Russian data centers filter foreign
-addresses too.
+1. Install the exit with the bridge's IP and copy the link it prints (see [Install](#install)). Its client `admin`
+   is the bridge: keep it when the exit is attached to a head.
+2. Install the bridge with that link, both with `HEAD_IP`, and attach both to the head like any node.
+3. Attach the users to the bridge's inbound only.
+
+Check from the bridge that the exit answers before moving users: some data centers filter foreign addresses
+too. When the exit's address gets blocked anyway, give it a new one and put it into the `exit` outbound on
+the bridge's panel (**Xray Configs → Outbounds**); users keep their subscription.
 
 ## Clients
 
@@ -154,7 +167,7 @@ To remove the panel: `x-ui uninstall`.
 
 | Path | What |
 |---|---|
-| `install.sh` | Entry point: `node`, `bridge`, `head`, `share-address`, `update-geodata`. |
+| `install.sh` | Entry point: `node`, `exit`, `bridge`, `head`, `share-address`, `update-geodata`. |
 | `lib/system.sh` | Packages, kernel tuning, SSH, firewall, fail2ban. |
 | `lib/panel.sh` | 3x-ui install and API: Xray core, WARP or bridge routing, inbounds, subscription, geodata, share address. |
 | `lib/decoy.sh` | Caddy decoy site for self-steal REALITY. |
