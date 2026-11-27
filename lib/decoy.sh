@@ -10,7 +10,8 @@ install_decoy() {
   install -d /var/www/decoy
   install -m 644 "$root/config/decoy/index.html" /var/www/decoy/index.html
   install -d -m 750 -g caddy /etc/caddy/certs
-  sed -e "s/@DOMAIN@/$domain/g" -e "s/@PORT@/$decoy_port/g" "$root/config/caddy/Caddyfile" >/etc/caddy/Caddyfile
+  # The site has no host: any SNI gets the decoy, so links with an older SNI keep their handshake.
+  sed -e "s/@PORT@/$decoy_port/g" "$root/config/caddy/Caddyfile" >/etc/caddy/Caddyfile
 
   # acme.sh renews into /root/cert, which the caddy user cannot read, so every renewal is copied over.
   cat >/etc/systemd/system/decoy-certificate.service <<UNIT

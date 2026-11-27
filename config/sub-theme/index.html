@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>{{ if .subTitle }}{{ .subTitle }}{{ else }}VPN{{ end }}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #f4f6fb;
+      --card: #ffffff;
+      --text: #14171f;
+      --muted: #5c6475;
+      --line: #dfe3ec;
+      --accent: #2f5bea;
+      --accent-text: #ffffff;
+      --ok: #16803c;
+      --off: #b42318;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      accent-color: var(--accent);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #0f1115;
+        --card: #171a21;
+        --text: #e9ecf2;
+        --muted: #9aa3b5;
+        --line: #2a2f3a;
+        --accent: #7f9cff;
+        --accent-text: #0f1115;
+        --ok: #4ade80;
+        --off: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--text); }
+    main { max-inline-size: 40rem; margin-inline: auto; padding: 1.5rem 1rem 3rem; display: grid; gap: 1rem; }
+    h1 { margin: 0; font-size: 1.6rem; text-wrap: balance; }
+    h2 { margin: 0 0 .75rem; font-size: 1.05rem; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem 1.25rem; }
+    .status { display: inline-flex; align-items: center; gap: .5rem; color: var(--muted); margin: .25rem 0 0; }
+    .status::before { content: ""; inline-size: .6rem; block-size: .6rem; border-radius: 50%; background: var(--muted); }
+    .status[data-state="online"]::before { background: var(--ok); }
+    .status[data-state="disabled"]::before { background: var(--off); }
+    .announce { border-inline-start: 4px solid var(--accent); }
+    dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .75rem; margin: 0; }
+    dt { color: var(--muted); font-size: .85rem; }
+    dd { margin: 0; font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; }
+    .app, .copy-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      min-block-size: 2.75rem; padding: .5rem 1rem; border-radius: .75rem;
+      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+    }
+    .app { background: var(--accent); color: var(--accent-text); border: 0; }
+    .app:focus-visible, .copy-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .link { display: flex; gap: .5rem; align-items: center; }
+    .link code {
+      flex: 1; min-inline-size: 0; overflow-wrap: anywhere; padding: .6rem .75rem;
+      border: 1px solid var(--line); border-radius: .75rem; font-size: .85rem;
+    }
+    .copy { position: relative; flex: none; }
+    .copy-button { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    .tip {
+      position: absolute; inset-block-end: calc(100% + .4rem); inset-inline-end: 0; white-space: nowrap;
+      padding: .2rem .5rem; border-radius: .4rem; background: var(--text); color: var(--page); font-size: .8rem;
+      opacity: 0; transition: opacity .15s; pointer-events: none;
+    }
+    .copy-button[data-copied] + .tip, .copy-button[data-failed] + .tip { opacity: 1; }
+    details + details { margin-block-start: .5rem; }
+    summary { cursor: pointer; font-weight: 600; }
+    details p, details ol { margin: .5rem 0 0; color: var(--muted); }
+    .support { text-align: center; }
+    .support a { color: var(--accent); font-weight: 600; }
+    @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{ if .subTitle }}{{ .subTitle }}{{ else }}VPN{{ end }}</h1>
+    <p class="status" id="status" data-state="{{ if not .enabled }}disabled{{ else if .isOnline }}online{{ else }}offline{{ end }}"></p>
+  </header>
+
+  {{ if .announce }}<section class="announce"><p>{{ .announce }}</p></section>{{ end }}
+
+  <section aria-labelledby="usage-title">
+    <h2 id="usage-title" data-text="usage">Подписка</h2>
+    <dl>
+      <div><dt data-text="used">Использовано</dt><dd id="used">{{ .used }}</dd></div>
+      <div><dt data-text="left">Осталось</dt><dd id="left">{{ .remained }}</dd></div>
+      <div><dt data-text="expires">Действует до</dt><dd id="expires"></dd></div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="apps-title">
+    <h2 id="apps-title" data-text="add">Добавить в приложение</h2>
+    <div class="apps" id="apps"></div>
+  </section>
+
+  <section aria-labelledby="link-title">
+    <h2 id="link-title" data-text="link">Ссылка подписки</h2>
+    <div class="link">
+      <code id="sub-url">{{ .subUrl }}</code>
+      <span class="copy">
+        <button type="button" class="copy-button" command="--copy" commandfor="sub-url" data-text="copy" aria-label="Скопировать ссылку подписки">Копировать</button>
+        <span class="tip" role="status"></span>
+      </span>
+    </div>
+  </section>
+
+  <section aria-labelledby="help-title">
+    <h2 id="help-title" data-text="help">Как подключиться</h2>
+    <details><summary>Android</summary><p data-text="android">Установите Happ или v2rayNG и нажмите кнопку приложения выше.</p></details>
+    <details><summary>iPhone / iPad</summary><p data-text="ios">Установите Happ из App Store и нажмите «Happ» выше.</p></details>
+    <details><summary>Windows / macOS / Linux</summary><p data-text="desktop">Установите Happ или Throne, скопируйте ссылку и добавьте её как подписку.</p></details>
+    <details><summary data-text="trouble">Не подключается</summary><p data-text="troubleText">Обновите подписку и приложение до последней версии, затем выберите другой сервер из списка.</p></details>
+  </section>
+
+  {{ if .subSupportUrl }}<p class="support"><a href="{{ .subSupportUrl }}" rel="noopener" data-text="support">Поддержка</a></p>{{ end }}
+</main>
+
+<script>
+  const data = {
+    title: {{ .subTitle }},
+    subUrl: {{ .subUrl }},
+    clashUrl: {{ .subClashUrl }},
+    expire: {{ .expire }},
+    totalByte: {{ .totalByte }},
+  };
+
+  // The markup carries the Russian text; English replaces it when the browser is not Russian.
+  const english = !navigator.language.toLowerCase().startsWith("ru");
+  const text = english ? {
+    usage: "Subscription", used: "Used", left: "Left", expires: "Valid until", add: "Add to an app",
+    link: "Subscription link", copy: "Copy", copyLabel: "Copy the subscription link", help: "How to connect",
+    support: "Support", trouble: "Cannot connect",
+    android: "Install Happ or v2rayNG and tap the app button above.",
+    ios: "Install Happ from the App Store and tap “Happ” above.",
+    desktop: "Install Happ or Throne, copy the link and add it as a subscription.",
+    troubleText: "Update the subscription and the app to the latest version, then pick another server from the list.",
+    online: "Connected now", offline: "Active", disabled: "Disabled", unlimited: "unlimited",
+    copied: "Copied", copyFailed: "Copy failed",
+  } : {
+    online: "Подключено сейчас", offline: "Активна", disabled: "Отключена", unlimited: "без ограничений",
+    copied: "Скопировано", copyFailed: "Не удалось скопировать",
+  };
+  if (english) {
+    document.documentElement.lang = "en";
+    for (const element of document.querySelectorAll("[data-text]")) element.textContent = text[element.dataset.text];
+    document.querySelector(".copy-button").setAttribute("aria-label", text.copyLabel);
+  }
+
+  const status = document.getElementById("status");
+  status.textContent = text[status.dataset.state];
+  document.getElementById("expires").textContent = data.expire > 0
+    ? new Intl.DateTimeFormat(document.documentElement.lang, { dateStyle: "long" }).format(new Date(data.expire * 1000))
+    : text.unlimited;
+  if (data.totalByte === 0) document.getElementById("left").textContent = text.unlimited;
+
+  const name = encodeURIComponent(data.title || "VPN");
+  const apps = [
+    ["Happ", `happ://add/${data.subUrl}`],
+    ["v2rayNG", `v2rayng://install-config?url=${encodeURIComponent(data.subUrl)}#${name}`],
+    ["Hiddify", `hiddify://import/${data.subUrl}#${name}`],
+    ["Clash / Mihomo", data.clashUrl && `clash://install-config?url=${encodeURIComponent(data.clashUrl)}&name=${name}`],
+  ];
+  const appList = document.getElementById("apps");
+  for (const [label, href] of apps) {
+    if (!href) continue;
+    appList.append(Object.assign(document.createElement("a"), { className: "app", href, textContent: label }));
+  }
+
+  const timers = new WeakMap();
+  let lastMessage = "";
+  function report(button, ok) {
+    const tip = button.nextElementSibling;
+    clearTimeout(timers.get(button));
+    button.removeAttribute("data-copied");
+    button.removeAttribute("data-failed");
+    let message = ok ? text.copied : text.copyFailed;
+    if (message === lastMessage) message += " ";
+    lastMessage = message;
+    tip.textContent = "";
+    button.setAttribute(ok ? "data-copied" : "data-failed", "");
+    requestAnimationFrame(() => (tip.textContent = message));
+    timers.set(button, setTimeout(() => {
+      button.removeAttribute("data-copied");
+      button.removeAttribute("data-failed");
+      tip.textContent = "";
+    }, 2000));
+  }
+
+  async function copy(button, target) {
+    try {
+      await navigator.clipboard.writeText(target.textContent.trim());
+      report(button, true);
+    } catch {
+      report(button, false);
+    }
+  }
+  if ("CommandEvent" in window) {
+    document.addEventListener("command", (event) => {
+      if (event.command === "--copy") copy(event.source, event.target);
+    }, true);
+  } else {
+    document.addEventListener("click", (event) => {
+      if (event.defaultPrevented) return;
+      const button = event.target.closest('button[command="--copy"]');
+      const target = button && document.getElementById(button.getAttribute("commandfor"));
+      if (target) copy(button, target);
+    });
+  }
+
+  async function refresh() {
+    const response = await fetch(`${location.pathname}?format=info`, { cache: "no-store" }).catch(() => null);
+    if (!response?.ok) return;
+    const info = await response.json();
+    status.dataset.state = !info.enabled ? "disabled" : info.isOnline ? "online" : "offline";
+    status.textContent = text[status.dataset.state];
+    document.getElementById("used").textContent = info.used;
+    if (data.totalByte !== 0) document.getElementById("left").textContent = info.remained;
+  }
+  setInterval(refresh, 30000);
+</script>
+</body>
+</html>
