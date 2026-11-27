@@ -83,7 +83,8 @@ renewals.
   WARP dials Cloudflare's IPv4 endpoint: by name the core can pick the AAAA, which never answers.
 - **System.** Packages and the kernel upgraded first (the summary asks for a reboot when the kernel changed), BBR
   with fq and buffers sized for QUIC, MPTCP off (Go listens with it by default, and listening IPv4 MPTCP sockets
-  gave remote root on unpatched kernels), an nftables firewall that drops everything but SSH and the ports above,
+  gave remote root on unpatched kernels), a 1 GB swap file where there is none and the journal capped at 100 MB
+  (the kernel killed Xray for memory on a 1 GB head), an nftables firewall that drops everything but SSH and the ports above,
   fail2ban on SSH, Xray pinned to `XRAY_VERSION`, geodata refreshed every night at 04:00
   Moscow time (a refresh restarts the core, so it runs when nobody is online).
 

@@ -66,6 +66,7 @@ install_node() {
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
   install_packages "${base_packages[@]}"
   tune_kernel
+  fit_memory
   [[ -z "$public_key" ]] || harden_ssh "$public_key"
   install_panel "$domain"
   install_decoy "$domain"
@@ -105,6 +106,7 @@ install_head() {
   require_root
   install_packages "${base_packages[@]}"
   tune_kernel
+  fit_memory
   [[ -z "$public_key" ]] || harden_ssh "$public_key"
   install_panel
   local host="${panel#*://}"
