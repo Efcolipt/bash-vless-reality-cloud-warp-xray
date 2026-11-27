@@ -47,6 +47,22 @@ UNIT
   systemctl enable --now -q qdisc-fq.service
 }
 
+# Small servers run the panel (and on a head PostgreSQL), Xray and Caddy side by side with no swap, and the kernel
+# has killed Xray for memory on a 1 GB head: a swap file takes the peaks, and the journal stops growing past 100 MB.
+fit_memory() {
+  log "Memory: 1 GB swap file where there is no swap, journal capped at 100 MB"
+  if [[ -z "$(swapon --show --noheadings)" ]]; then
+    fallocate -l 1G /swapfile
+    chmod 600 /swapfile
+    mkswap -q /swapfile
+    swapon /swapfile
+    grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >>/etc/fstab
+  fi
+  mkdir -p /etc/systemd/journald.conf.d
+  printf '[Journal]\nSystemMaxUse=100M\nRuntimeMaxUse=50M\n' >/etc/systemd/journald.conf.d/size.conf
+  systemctl restart systemd-journald
+}
+
 ssh_access_file=/root/vpn-ssh.txt
 
 # A new sudo user on a random port, key login only; root and passwords stop working. The access line is
