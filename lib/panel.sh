@@ -136,12 +136,10 @@ configure_bridge() {
 }
 
 # add_inbounds <domain> <node | exit | bridge>: inbounds that share one client "admin", all three on a node and
-# VLESS REALITY alone on an exit or a bridge, plus the whitelist one on a bridge with WHITELIST_SNI; sets sub_id,
-# its subscription ID.
+# VLESS REALITY alone on an exit or a bridge; sets sub_id, its subscription ID.
 add_inbounds() {
   local domain="$1" mode="$2" name="${1%%.*}" inbounds="VLESS REALITY $reality_port" server_ip uuid hysteria_auth
   [[ "$mode" != node ]] || inbounds+=", XHTTP REALITY $xhttp_port, Hysteria2 $hysteria_port"
-  [[ "$mode" != bridge || -z "$whitelist_sni" ]] || inbounds+=", VLESS REALITY as $whitelist_sni $whitelist_port"
   log "Inbounds: $inbounds"
   server_ip="$(getent ahostsv4 "$domain" | awk 'NR == 1 { print $1 }')"
   uuid="$(api GET server/getNewUUID | jq -r .uuid)"
@@ -155,17 +153,17 @@ add_inbounds() {
     }'
   }
 
-  # reality_settings <target> <server name>: the handshake a prober gets comes from the target for that name.
+  # Self-steal: the handshake comes from our own decoy site, so the SNI is our domain and resolves here.
   reality_settings() {
-    api GET server/getNewX25519Cert | jq -c --arg target "$1" --arg server_name "$2" \
+    api GET server/getNewX25519Cert | jq -c --arg domain "$domain" --arg target "127.0.0.1:$decoy_port" \
       --arg short_id "$(openssl rand -hex 8)" '{
       show: false,
       xver: 0,
       target: $target,
-      serverNames: [$server_name],
+      serverNames: [$domain],
       privateKey: .privateKey,
       shortIds: [$short_id],
-      settings: { publicKey: .publicKey, fingerprint: "chrome", serverName: $server_name, spiderX: "/" }
+      settings: { publicKey: .publicKey, fingerprint: "chrome", serverName: "", spiderX: "/" }
     }'
   }
 
@@ -182,32 +180,21 @@ add_inbounds() {
     }' | api POST inbounds/add -H 'Content-Type: application/json' --data @- >/dev/null
   }
 
-  # vless_reality_inbound <port> <remark> <target> <server name>: VLESS over TCP with Vision and REALITY.
-  vless_reality_inbound() {
-    jq -nc --argjson client "$(inbound_client xtls-rprx-vision)" --argjson reality "$(reality_settings "$3" "$4")" \
-      --argjson port "$1" --arg remark "$2" '{
-      remark: $remark,
-      port: $port,
-      protocol: "vless",
-      settings: { clients: [$client], decryption: "none", encryption: "none" },
-      streamSettings: {
-        network: "tcp",
-        tcpSettings: { acceptProxyProtocol: false, header: { type: "none" } },
-        security: "reality",
-        realitySettings: $reality
-      }
-    }' | add_inbound
-  }
-
-  # Self-steal: the handshake comes from our own decoy site, so the SNI is our domain and resolves here.
-  vless_reality_inbound "$reality_port" "VLESS Reality" "127.0.0.1:$decoy_port" "$domain"
-  # Mobile whitelists let through the SNI of listed domestic sites, so this one borrows a real one.
-  [[ "$mode" != bridge || -z "$whitelist_sni" ]] ||
-    vless_reality_inbound "$whitelist_port" "VLESS Reality · whitelist" "$whitelist_sni:443" "$whitelist_sni"
+  jq -nc --argjson client "$(inbound_client xtls-rprx-vision)" --argjson reality "$(reality_settings)" --argjson port "$reality_port" '{
+    remark: "VLESS Reality",
+    port: $port,
+    protocol: "vless",
+    settings: { clients: [$client], decryption: "none", encryption: "none" },
+    streamSettings: {
+      network: "tcp",
+      tcpSettings: { acceptProxyProtocol: false, header: { type: "none" } },
+      security: "reality",
+      realitySettings: $reality
+    }
+  }' | add_inbound
   [[ "$mode" == node ]] || return 0
 
-  jq -nc --argjson client "$(inbound_client '')" --argjson reality "$(reality_settings "127.0.0.1:$decoy_port" "$domain")" \
-    --argjson port "$xhttp_port" '{
+  jq -nc --argjson client "$(inbound_client '')" --argjson reality "$(reality_settings)" --argjson port "$xhttp_port" '{
     remark: "XHTTP Reality",
     port: $port,
     protocol: "vless",
@@ -302,7 +289,8 @@ configure_subscription() {
     subRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
     subJsonRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
     subHappAutoDetect: true,
-    subHappAutoConnect: false,
+    subHappAutoConnect: true,
+    subHappAutoConnectType: "lowestdelay",
     subHappSubExpire: true,
     subHappNotificationExpire: true,
     subHappExcludeRoutes: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16",
