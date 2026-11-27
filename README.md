@@ -74,8 +74,10 @@ renewals.
 - **Client auto-setup.** The subscription carries split routing from
   [RoscomVPN](https://github.com/hydraponique/roscomvpn-routing), which the panel refreshes in the background:
   Russian sites go direct from the user's device, YouTube, Telegram and GitHub through the VPN, ads are blocked.
-  Happ gets it as a header (plus autoconnect to the fastest server, local networks and Apple push outside the
-  tunnel), Incy as an autorouting profile, Clash/Mihomo inside the YAML, JSON subscriptions embedded.
+  Happ gets it as a header (plus local networks and Apple push outside the tunnel; no autoconnect to the fastest
+  server, so clients stay on the first profile and pick the whitelist one by hand), Incy as an autorouting
+  profile, Clash/Mihomo inside the YAML, JSON subscriptions embedded. Happ applies its app-setting headers only
+  with a Provider ID from happ-proxy.com.
 - **Routing on the server**, in order: private addresses and BitTorrent blocked; `anthropic.com`, `claude.ai`,
   `statsig.com`, `sentry.io`, `githubusercontent.com` direct (before the ad filter, which contains
   `statsig.anthropic.com`); ads blocked; OpenAI through Cloudflare WARP, because it refuses many hosting
