@@ -10,6 +10,13 @@ As root on a fresh Debian 12/13 or Ubuntu 24.04 server.
 apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh node vpn.example.com "ssh-ed25519 AAAA... you@laptop"
 ```
 
+**Bridge**, a node in Russia in front of a node abroad (see [Bridge](#bridge-in-russia)). The exit link is a
+VLESS REALITY (TCP) link of a client on the exit node:
+
+```bash
+apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh bridge ru.example.com "vless://…@exit-ip:443?security=reality&…" "ssh-ed25519 AAAA... you@laptop"
+```
+
 **Head**, one subscription for several nodes (optional, on its own small server):
 
 ```bash
@@ -75,6 +82,21 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 
 The head's address is in every user's subscription link, so keep it off the servers that carry traffic.
 
+## Bridge in Russia
+
+Some providers block the address of a foreign server for their subscribers within days. A bridge is a node on a
+Russian server: users connect to its domestic address, Russian sites leave from it directly (and see a Russian
+address), and everything else, sites blocked in Russia included, goes on to the exit node over VLESS REALITY.
+The exit keeps its own routing (WARP, exceptions); only the bridge's address is in user subscriptions.
+
+1. On the exit node, add a client for the bridge on the VLESS REALITY (TCP) inbound and copy its link.
+2. Install the bridge with that link (see [Install](#install)) and attach it to the head like any node.
+3. Attach the users to the bridge's inbounds. Keep their exit profiles too: where the exit is not blocked,
+   clients that pick the fastest server use it directly.
+
+Check from the bridge that the exit answers before moving users: some Russian data centers filter foreign
+addresses too.
+
 ## Clients
 
 Since Xray 26.9.8, REALITY refuses a ClientHello without an X25519MLKEM768 key share
@@ -128,9 +150,9 @@ To remove the panel: `x-ui uninstall`.
 
 | Path | What |
 |---|---|
-| `install.sh` | Entry point: `node`, `head`, `share-address`, `update-geodata`. |
+| `install.sh` | Entry point: `node`, `bridge`, `head`, `share-address`, `update-geodata`. |
 | `lib/system.sh` | Packages, kernel tuning, SSH, firewall, fail2ban. |
-| `lib/panel.sh` | 3x-ui install and API: Xray core, WARP, routing, inbounds, subscription, geodata, share address. |
+| `lib/panel.sh` | 3x-ui install and API: Xray core, WARP or bridge routing, inbounds, subscription, geodata, share address. |
 | `lib/decoy.sh` | Caddy decoy site for self-steal REALITY. |
 | `config/xray-template.json` | Routing, DNS, policy and outbounds; the WARP outbound is added at install. |
 | `config/sysctl.conf` | Kernel network settings. |

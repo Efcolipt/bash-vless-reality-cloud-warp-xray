@@ -83,6 +83,51 @@ configure_xray() {
     "xraySetting=$(jq -c --argjson warp "$warp_outbound" '.outbounds += [$warp]' "$root/config/xray-template.json")" >/dev/null
 }
 
+# configure_bridge <vless REALITY link of a client on the exit server>: users reach this server's domestic
+# address, which blocks of foreign hosting addresses cannot cut. Russian sites leave from it directly; sites
+# blocked in Russia and everything else go on to the exit, the first outbound and so the default.
+configure_bridge() {
+  local link="$1" rest host_port query exit_outbound
+  log "Bridge routing: Russian sites direct, the rest through the exit"
+  [[ "$link" == vless://*security=reality* ]] || die "The exit must be a vless:// REALITY link."
+  rest="${link#vless://}"
+  host_port="${rest#*@}"
+  host_port="${host_port%%\?*}"
+  query="${rest#*\?}"
+  query="${query%%#*}"
+  link_param() { tr '&' '\n' <<<"$query" | awk -F= -v key="$1" '$1 == key { print $2; exit }'; }
+  exit_outbound="$(jq -nc --arg id "${rest%%@*}" --arg host "${host_port%:*}" --argjson port "${host_port##*:}" \
+    --arg flow "$(link_param flow)" --arg server_name "$(link_param sni)" --arg fingerprint "$(link_param fp)" \
+    --arg public_key "$(link_param pbk)" --arg short_id "$(link_param sid)" '{
+    tag: "exit",
+    protocol: "vless",
+    settings: { vnext: [{ address: $host, port: $port, users: [{ id: $id, encryption: "none", flow: $flow }] }] },
+    streamSettings: {
+      network: "tcp",
+      security: "reality",
+      realitySettings: {
+        serverName: $server_name,
+        fingerprint: (if $fingerprint == "" then "chrome" else $fingerprint end),
+        publicKey: $public_key,
+        shortId: $short_id,
+        spiderX: "/"
+      }
+    }
+  }')"
+  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson exit "$exit_outbound" '
+    .outbounds = [$exit] + .outbounds
+    | .routing.rules = [
+        (.routing.rules[] | select(.inboundTag == ["api"])),
+        { type: "field", ip: ["geoip:private"], outboundTag: "blocked" },
+        { type: "field", protocol: ["bittorrent"], outboundTag: "blocked" },
+        { type: "field", domain: ["geosite:category-ads-all", "ext:geosite_RU.dat:category-ads-all"], outboundTag: "blocked" },
+        { type: "field", ip: ["ext:geoip_RU.dat:ru-blocked", "geoip:telegram"], outboundTag: "exit" },
+        { type: "field", domain: ["ext:geosite_RU.dat:ru-blocked"], outboundTag: "exit" },
+        { type: "field", domain: ["geosite:category-ru"], outboundTag: "direct" },
+        { type: "field", ip: ["geoip:ru"], outboundTag: "direct" }
+      ]' "$root/config/xray-template.json")" >/dev/null
+}
+
 # add_inbounds <domain>: three inbounds that share one client "admin"; sets sub_id, its subscription ID.
 add_inbounds() {
   local domain="$1" name="${1%%.*}" server_ip uuid hysteria_auth

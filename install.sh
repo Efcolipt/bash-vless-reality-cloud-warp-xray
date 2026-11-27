@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # VPN servers on 3x-ui. Run as root from the clone in /opt/vpn:
 #   install.sh node <domain> [ssh public key]               VPN node
+#   install.sh bridge <domain> <exit link> [ssh public key] node in Russia: Russian sites direct, the rest via the exit
 #   install.sh head [ssh public key]                        head panel, one subscription for all nodes
 #   install.sh share-address <old ip> <new ip> [panel url]  after the server's IP changes
 #   install.sh update-geodata                               what the nightly timer runs
@@ -23,8 +24,9 @@ decoy_port=8443
 # Minimal Debian images ship without sudo, which the SSH user needs.
 base_packages=(curl jq openssl nftables fail2ban sudo)
 
+# install_node <domain> [ssh public key] [exit link]: with an exit link the node is a bridge.
 install_node() {
-  local domain="${1:?usage: install.sh node <domain> [ssh public key]}" public_key="${2:-}"
+  local domain="${1:?usage: install.sh node <domain> [ssh public key]}" public_key="${2:-}" exit_link="${3:-}"
   require_root
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
   install_packages "${base_packages[@]}"
@@ -33,7 +35,7 @@ install_node() {
   install_panel "$domain"
   install_decoy "$domain"
   pin_xray
-  configure_xray
+  if [[ -n "$exit_link" ]]; then configure_bridge "$exit_link"; else configure_xray; fi
   add_inbounds "$domain"
   configure_subscription "$domain"
   schedule_geodata
@@ -73,7 +75,8 @@ DONE
 }
 
 case "${1:-}" in
-  node) install_node "${@:2}" ;;
+  node) install_node "${2:-}" "${3:-}" ;;
+  bridge) install_node "${2:-}" "${4:-}" "${3:?usage: install.sh bridge <domain> <exit vless link> [ssh public key]}" ;;
   head) install_head "${@:2}" ;;
   share-address)
     [[ $# -ge 3 ]] || die "usage: install.sh share-address <old ip> <new ip> [panel url]"
