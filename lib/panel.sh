@@ -79,14 +79,68 @@ configure_xray() {
       }]
     }
   }' <<<"$warp")"
-  api POST xray/update --data-urlencode \
-    "xraySetting=$(jq -c --argjson warp "$warp_outbound" '.outbounds += [$warp]' "$root/config/xray-template.json")" >/dev/null
+  # The users' own sites go through WARP: many of them refuse foreign hosting addresses.
+  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson warp "$warp_outbound" \
+    --argjson country_rules "$(country_rules warp)" '.outbounds += [$warp] | .routing.rules += $country_rules' \
+    "$root/config/xray-template.json")" >/dev/null
 }
 
-# add_inbounds <domain>: three inbounds that share one client "admin"; sets sub_id, its subscription ID.
+# country_rules <outbound tag>: routing rules that send the sites of $country to that outbound.
+country_rules() {
+  jq -nc --arg country "$country" --arg outbound "$1" '[
+    { type: "field", domain: ["geosite:category-" + $country], outboundTag: $outbound },
+    { type: "field", ip: ["geoip:" + $country], outboundTag: $outbound }
+  ]'
+}
+
+# configure_bridge <vless REALITY link of a client on the exit server>: users reach this server's domestic
+# address, which blocks of foreign hosting addresses cannot cut. Sites of the bridge's country leave from it
+# directly; everything else goes on to the exit, the first outbound and so the default. The template's
+# exceptions leave through the exit too, and WARP stays the exit's business.
+configure_bridge() {
+  local link="$1" rest host_port query exit_outbound
+  log "Bridge routing: geosite:category-$country and geoip:$country direct, the rest through the exit"
+  [[ "$link" == vless://*security=reality* ]] || die "The exit must be a vless:// REALITY link."
+  rest="${link#vless://}"
+  host_port="${rest#*@}"
+  host_port="${host_port%%\?*}"
+  query="${rest#*\?}"
+  query="${query%%#*}"
+  link_param() { tr '&' '\n' <<<"$query" | awk -F= -v key="$1" '$1 == key { print $2; exit }'; }
+  exit_outbound="$(jq -nc --arg id "${rest%%@*}" --arg host "${host_port%:*}" --argjson port "${host_port##*:}" \
+    --arg flow "$(link_param flow)" --arg server_name "$(link_param sni)" --arg fingerprint "$(link_param fp)" \
+    --arg public_key "$(link_param pbk)" --arg short_id "$(link_param sid)" '{
+    tag: "exit",
+    protocol: "vless",
+    settings: { vnext: [{ address: $host, port: $port, users: [{ id: $id, encryption: "none", flow: $flow }] }] },
+    streamSettings: {
+      network: "tcp",
+      security: "reality",
+      realitySettings: {
+        serverName: $server_name,
+        fingerprint: (if $fingerprint == "" then "chrome" else $fingerprint end),
+        publicKey: $public_key,
+        shortId: $short_id,
+        spiderX: "/"
+      }
+    }
+  }')"
+  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson exit "$exit_outbound" \
+    --argjson country_rules "$(country_rules direct)" '
+    .outbounds = [$exit] + .outbounds
+    | .routing.rules = [
+        .routing.rules[]
+        | select(.outboundTag != "warp")
+        | if .outboundTag == "direct" then .outboundTag = "exit" else . end
+      ] + $country_rules' "$root/config/xray-template.json")" >/dev/null
+}
+
+# add_inbounds <domain> <node | exit | bridge>: inbounds that share one client "admin", all three on a node and
+# VLESS REALITY alone on an exit or a bridge; sets sub_id, its subscription ID.
 add_inbounds() {
-  local domain="$1" name="${1%%.*}" server_ip uuid hysteria_auth
-  log "Inbounds: VLESS REALITY $reality_port, XHTTP REALITY $xhttp_port, Hysteria2 $hysteria_port"
+  local domain="$1" mode="$2" name="${1%%.*}" inbounds="VLESS REALITY $reality_port" server_ip uuid hysteria_auth
+  [[ "$mode" != node ]] || inbounds+=", XHTTP REALITY $xhttp_port, Hysteria2 $hysteria_port"
+  log "Inbounds: $inbounds"
   server_ip="$(getent ahostsv4 "$domain" | awk 'NR == 1 { print $1 }')"
   uuid="$(api GET server/getNewUUID | jq -r .uuid)"
   sub_id="$(openssl rand -hex 8)"
@@ -138,6 +192,7 @@ add_inbounds() {
       realitySettings: $reality
     }
   }' | add_inbound
+  [[ "$mode" == node ]] || return 0
 
   jq -nc --argjson client "$(inbound_client '')" --argjson reality "$(reality_settings)" --argjson port "$xhttp_port" '{
     remark: "XHTTP Reality",
@@ -229,7 +284,7 @@ configure_subscription() {
     subThemeDir: "/etc/x-ui/sub-theme/",
     subProfileMode: "builtin",
     remarkTemplate: "{{INBOUND}}|📊 {{TRAFFIC_LEFT}}|⏳ {{TIME_LEFT}}",
-    subUpdates: 3,
+    subUpdates: 1,
     subEnableRouting: true,
     subRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
     subJsonRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),

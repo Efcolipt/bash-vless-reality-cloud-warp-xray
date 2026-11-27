@@ -8,9 +8,14 @@ die() {
 
 require_root() { [[ $EUID -eq 0 ]] || die "Run as root."; }
 
+# require_ipv4 <value> <name>: an address from the command line goes into firewall rules, which are written last.
+require_ipv4() { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "$2 must be an IPv4 address, not '$1'."; }
+
 install_packages() {
   command -v apt-get >/dev/null || die "Debian or Ubuntu is required."
   apt-get update -q
+  # Hoster images lag months behind on kernel and OpenSSH security fixes.
+  DEBIAN_FRONTEND=noninteractive apt-get full-upgrade -y -q -o Dpkg::Options::=--force-confold
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q "$@"
 }
 
@@ -62,9 +67,10 @@ harden_ssh() {
   rm -f "$key_file"
 
   log "SSH: new sudo user, random port, key login only"
-  ssh_user="$(shuf -n 1 -e orbit falcon cedar quartz harbor lumen nimbus ember tundra vertex)$(shuf -i 1000-9999 -n 1)"
+  # SSH_USER and SSH_PORT let a remote operator know the new access before the session that started it drops.
+  ssh_user="${SSH_USER:-$(shuf -n 1 -e orbit falcon cedar quartz harbor lumen nimbus ember tundra vertex)$(shuf -i 1000-9999 -n 1)}"
   ssh_password="$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)"
-  port="$(shuf -i 20000-49000 -n 1)"
+  port="${SSH_PORT:-$(shuf -i 20000-49000 -n 1)}"
   getent group sudo >/dev/null && group=sudo || group=wheel
   useradd -m -s /bin/bash -G "$group" "$ssh_user"
   echo "$ssh_user:$ssh_password" | chpasswd
@@ -98,9 +104,13 @@ CONF
   log "SSH: $(head -1 "$ssh_access_file") — also in $ssh_access_file"
 }
 
-# protect <tcp ports> [udp ports] [udp hop range]: default-drop firewall plus fail2ban on SSH.
+# protect <tcp ports> <udp ports> <udp hop range> [nft rule …]: default-drop firewall plus fail2ban on SSH;
+# empty arguments open nothing, and each rule opens a port to one address.
 protect() {
-  local tcp_ports="$1" udp_ports="${2:-}" hop_ports="${3:-}" ssh_port_list interface udp_rule="" hop_table=""
+  local tcp_ports="$1" udp_ports="$2" hop_ports="$3" ssh_port_list interface udp_rule="" hop_table=""
+  local rule rule_lines=""
+  shift 3
+  for rule in "$@"; do rule_lines+=$'\n\t\t'"$rule"; done
   ssh_port_list="$(ssh_ports)"
   interface="$(default_interface)"
   log "Firewall: drop everything but SSH ($ssh_port_list) and the VPN ports"
@@ -128,7 +138,7 @@ table inet filter {
 		meta l4proto { icmp, ipv6-icmp } accept
 		ct state invalid drop
 		tcp dport { $ssh_port_list, $tcp_ports } accept
-		$udp_rule
+		$udp_rule$rule_lines
 	}
 
 	chain forward {

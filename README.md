@@ -10,6 +10,14 @@ As root on a fresh Debian 12/13 or Ubuntu 24.04 server.
 apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh node vpn.example.com "ssh-ed25519 AAAA... you@laptop"
 ```
 
+**Exit and bridge**, a node abroad that only a node in the users' country talks to (see [Bridge](#bridge)). The
+exit first, with the bridge's IP; it prints the link the bridge needs:
+
+```bash
+apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh exit de.example.com <bridge ip> "ssh-ed25519 AAAA... you@laptop"
+apt-get update && apt-get install -y git && git clone --depth 1 https://github.com/Efcolipt/bash-vless-reality-cloud-warp-xray.git /opt/vpn && /opt/vpn/install.sh bridge ru.example.com "vless://…@exit-ip:443?security=reality&…" "ssh-ed25519 AAAA... you@laptop"
+```
+
 **Head**, one subscription for several nodes (optional, on its own small server):
 
 ```bash
@@ -24,7 +32,10 @@ XUI_API_TOKEN=<head token> /opt/vpn/install.sh share-address <old ip> <new ip> <
 ```
 
 The SSH key is optional. With it the server gets a new sudo user on a random port, and root and password logins
-stop working: save what the script prints at the end. Without it SSH stays as it is.
+stop working; the new access line is printed at once and kept in `/root/vpn-ssh.txt`. Without it SSH stays as it is.
+
+The install runs as a systemd unit and the terminal only follows `/root/vpn-install.log`, so a dropped SSH session
+does not stop it: read the log from the hoster's console or after logging in again.
 
 Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vpn/install.sh node …`):
 
@@ -33,6 +44,9 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `HYSTERIA_BANDWIDTH` | `125000000` (1 Gbit/s) | Hysteria2 brutal sends at exactly this rate in bytes per second: set the server's real bandwidth. |
 | `XRAY_VERSION` | `v26.11.9` | Xray core the panel runs. |
 | `XUI_ACME_EMAIL` | none | Email for Let's Encrypt notices. |
+| `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
+| `HEAD_IP` | none | The head's IP: the node's panel answers only it, and the subscription port stays closed. |
+| `COUNTRY` | `ru` | The users' country code: its sites leave a bridge directly and a node through WARP. |
 
 ## What a node gets
 
@@ -44,6 +58,11 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | random/tcp | 3x-ui panel, HTTPS. |
 | 2096/tcp | Subscription, HTTPS. |
 | 80/tcp | Let's Encrypt renewals. |
+
+An exit and a bridge get VLESS REALITY on 443/tcp alone, the profile that looks most like an ordinary HTTPS site;
+the exit takes it only from its bridge and never opens 2096. With `HEAD_IP` the panel port is open to the head only
+and 2096 is closed; without it the panel answers everyone, so set it on an exit. Port 80 stays open for certificate
+renewals.
 
 - **Self-steal REALITY.** REALITY borrows the TLS handshake of the server's own site: Caddy serves a decoy page on
   127.0.0.1 with the domain's certificate, for any SNI. Clients send the server's domain as SNI, it resolves to this
@@ -58,11 +77,13 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 - **Routing on the server**, in order: private addresses and BitTorrent blocked; `anthropic.com`, `claude.ai`,
   `statsig.com`, `sentry.io`, `githubusercontent.com` direct (before the ad filter, which contains
   `statsig.anthropic.com`); ads blocked; OpenAI through Cloudflare WARP, because it refuses many hosting
-  addresses; sites blocked in Russia direct; Russian sites through WARP, because many of them refuse foreign
+  addresses; the sites of the users' country (`COUNTRY`) through WARP, because many of them refuse foreign
   hosting addresses. Spotify, Reddit, NVIDIA and others stay direct: through WARP they time out or stall.
   WARP dials Cloudflare's IPv4 endpoint: by name the core can pick the AAAA, which never answers.
-- **System.** BBR with fq and buffers sized for QUIC, an nftables firewall that drops everything but SSH and the
-  ports above, fail2ban on SSH, Xray pinned to `XRAY_VERSION`, Russian geodata refreshed every night at 04:00
+- **System.** Packages and the kernel upgraded first (the summary asks for a reboot when the kernel changed), BBR
+  with fq and buffers sized for QUIC, MPTCP off (Go listens with it by default, and listening IPv4 MPTCP sockets
+  gave remote root on unpatched kernels), an nftables firewall that drops everything but SSH and the ports above,
+  fail2ban on SSH, Xray pinned to `XRAY_VERSION`, geodata refreshed every night at 04:00
   Moscow time (a refresh restarts the core, so it runs when nobody is online).
 
 ## Several nodes behind a head
@@ -74,6 +95,26 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
    and an edit made on the node never reaches the subscription.
 
 The head's address is in every user's subscription link, so keep it off the servers that carry traffic.
+
+## Bridge
+
+Some providers block the address of a foreign server for their subscribers within days. A bridge is a node in the
+users' own country: users connect to its domestic address, the country's sites (`geosite:category-<COUNTRY>`,
+`geoip:<COUNTRY>`) leave from it directly and see a local address, and everything else goes on to the exit node
+over VLESS REALITY. The exit keeps its own routing (WARP, exceptions). Set `COUNTRY` to a code that has both lists
+in the geodata (`ru`, `ir`, …).
+
+Providers block by address, whatever the SNI, and an address that carries many users' traffic goes first. So the
+exit's address must never reach a subscription: users get the bridge, and the exit answers the bridge alone.
+
+1. Install the exit with the bridge's IP and copy the link it prints (see [Install](#install)). Its client `admin`
+   is the bridge: keep it when the exit is attached to a head.
+2. Install the bridge with that link, both with `HEAD_IP`, and attach both to the head like any node.
+3. Attach the users to the bridge's inbound only.
+
+Check from the bridge that the exit answers before moving users: some data centers filter foreign addresses
+too. When the exit's address gets blocked anyway, give it a new one and put it into the `exit` outbound on
+the bridge's panel (**Xray Configs → Outbounds**); users keep their subscription.
 
 ## Clients
 
@@ -128,9 +169,9 @@ To remove the panel: `x-ui uninstall`.
 
 | Path | What |
 |---|---|
-| `install.sh` | Entry point: `node`, `head`, `share-address`, `update-geodata`. |
+| `install.sh` | Entry point: `node`, `exit`, `bridge`, `head`, `share-address`, `update-geodata`. |
 | `lib/system.sh` | Packages, kernel tuning, SSH, firewall, fail2ban. |
-| `lib/panel.sh` | 3x-ui install and API: Xray core, WARP, routing, inbounds, subscription, geodata, share address. |
+| `lib/panel.sh` | 3x-ui install and API: Xray core, WARP or bridge routing, inbounds, subscription, geodata, share address. |
 | `lib/decoy.sh` | Caddy decoy site for self-steal REALITY. |
 | `config/xray-template.json` | Routing, DNS, policy and outbounds; the WARP outbound is added at install. |
 | `config/sysctl.conf` | Kernel network settings. |

@@ -98,20 +98,8 @@
         ],
         "outboundTag": "direct"
       },
-      {
-        "type": "field",
-        "domain": ["geosite:category-ads-all", "ext:geosite_RU.dat:category-ads-all"],
-        "outboundTag": "blocked"
-      },
-      {
-        "type": "field",
-        "domain": ["geosite:openai"],
-        "outboundTag": "warp"
-      },
-      { "type": "field", "ip": ["ext:geoip_RU.dat:ru-blocked", "geoip:telegram"], "outboundTag": "direct" },
-      { "type": "field", "domain": ["ext:geosite_RU.dat:ru-blocked"], "outboundTag": "direct" },
-      { "type": "field", "domain": ["geosite:category-ru"], "outboundTag": "warp" },
-      { "type": "field", "ip": ["geoip:ru"], "outboundTag": "warp" }
+      { "type": "field", "domain": ["geosite:category-ads-all"], "outboundTag": "blocked" },
+      { "type": "field", "domain": ["geosite:openai"], "outboundTag": "warp" }
     ]
   },
   "stats": {}
