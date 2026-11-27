@@ -17,7 +17,8 @@ xui_version=v3.11.0
 xray_version="${XRAY_VERSION:-v26.11.9}"
 # Brutal sends at exactly this rate (bytes per second): set the server's real bandwidth.
 hysteria_bandwidth="${HYSTERIA_BANDWIDTH:-125000000}"
-# The bridge's country: its geosite:category-<code> and geoip:<code> sites leave from the bridge directly.
+# The users' country: its geosite:category-<code> and geoip:<code> sites leave a bridge directly and a node
+# through WARP.
 country="${COUNTRY:-ru}"
 reality_port=443
 xhttp_port=11849
@@ -34,27 +35,30 @@ if [[ -z "${INVOCATION_ID:-}" && "${1:-}" =~ ^(node|exit|bridge|head)$ ]]; then
   require_root
   unit="vpn-install-$(date +%s)"
   : >"$install_log"
-  systemd-run --quiet --unit "$unit" \
+  # --wait returns when the unit ends, with its result; a dropped session leaves the unit running. tail --pid
+  # prints the log to its last line and stops once the waiting client is gone.
+  systemd-run --quiet --wait --unit "$unit" \
     --setenv=XRAY_VERSION="$xray_version" --setenv=HYSTERIA_BANDWIDTH="$hysteria_bandwidth" \
     --setenv=XUI_ACME_EMAIL="${XUI_ACME_EMAIL:-}" --setenv=SSH_USER="${SSH_USER:-}" --setenv=SSH_PORT="${SSH_PORT:-}" \
     --setenv=HEAD_IP="${HEAD_IP:-}" --setenv=COUNTRY="$country" \
     --property=StandardOutput="append:$install_log" --property=StandardError="append:$install_log" \
-    "$root/install.sh" "$@"
-  tail -n +1 -f "$install_log" &
-  follower=$!
-  while systemctl is-active --quiet "$unit"; do sleep 2; done
-  kill "$follower"
-  [[ "$(systemctl show -p Result --value "$unit")" == success ]] || die "The install failed: see $install_log."
+    "$root/install.sh" "$@" &
+  runner=$!
+  tail -n +1 -f --pid="$runner" "$install_log"
+  wait "$runner" || die "The install failed: see $install_log."
   exit 0
 fi
 
-# install_node <node | exit | bridge> <domain> [ssh public key] [bridge ip | exit link]
-# An exit takes VLESS REALITY only from its bridge; a bridge sends what is not Russian on to its exit. Both
-# keep just TCP 443, which looks like any HTTPS site; HEAD_IP leaves the panel to the head alone.
+# install_node <node | exit | bridge> <domain> <bridge ip | exit link | ""> [ssh public key]
+# An exit takes VLESS REALITY only from its bridge; a bridge sends what is not the users' country's on to its
+# exit. Both keep just TCP 443, which looks like any HTTPS site; HEAD_IP leaves the panel to the head alone.
 install_node() {
-  local mode="$1" domain="${2:?usage: install.sh $1 <domain> …}" public_key="${3:-}" peer="${4:-}"
+  local mode="$1" domain="${2:?usage: install.sh $1 <domain> …}" peer="$3" public_key="${4:-}"
   local tcp_ports=80 udp_ports="" hop_ports="" rules=()
   require_root
+  [[ "$country" =~ ^[a-z]{2}$ ]] || die "COUNTRY must be a two-letter code, such as ru."
+  [[ "$mode" != exit ]] || require_ipv4 "$peer" "The bridge IP"
+  [[ -z "${HEAD_IP:-}" ]] || require_ipv4 "$HEAD_IP" HEAD_IP
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
   install_packages "${base_packages[@]}"
   tune_kernel
@@ -74,14 +78,18 @@ install_node() {
   if [[ -n "${HEAD_IP:-}" ]]; then
     rules+=("ip saddr $HEAD_IP tcp dport $XUI_PANEL_PORT accept")
   else
-    tcp_ports+=", $XUI_PANEL_PORT, $subscription_port"
+    tcp_ports+=", $XUI_PANEL_PORT"
   fi
+  # An exit's only client is the bridge, whose link is printed below: its subscription port stays closed.
+  [[ -n "${HEAD_IP:-}" || "$mode" == exit ]] || tcp_ports+=", $subscription_port"
   protect "$tcp_ports" "$udp_ports" "$hop_ports" "${rules[@]}"
   systemctl restart x-ui
   wait_for_panel
   if [[ "$mode" == exit ]]; then
-    summary "Exit link for the bridge: $(curl -fsSk --resolve "$domain:$subscription_port:127.0.0.1" "$subscription_base$sub_id" |
-      base64 -d | grep -m1 '^vless://')"
+    local exit_link
+    exit_link="$(curl -fsSk --resolve "$domain:$subscription_port:127.0.0.1" "$subscription_base$sub_id" |
+      base64 -d | grep -m1 '^vless://')" || die "No exit link: copy the admin client's VLESS link from the panel."
+    summary "Exit link for the bridge: $exit_link"
   else
     summary "Subscription: $subscription_base$sub_id"
   fi
@@ -96,7 +104,7 @@ install_head() {
   install_panel
   local host="${panel#*://}"
   configure_subscription "${host%%[:/]*}"
-  protect "80, $XUI_PANEL_PORT, $subscription_port"
+  protect "80, $XUI_PANEL_PORT, $subscription_port" "" ""
   systemctl restart x-ui
   wait_for_panel
   summary "Subscriptions: $subscription_base<subscription ID>"
@@ -113,14 +121,17 @@ Done.
 DONE
   [[ ! -s "$ssh_access_file" ]] || sed 's/^/  /' "$ssh_access_file"
   echo "The login, the password and the API token are kept in /etc/x-ui/install-result.env."
-  [[ "$(ls /boot/vmlinuz-* | sort -V | tail -1)" == "/boot/vmlinuz-$(uname -r)" ]] ||
+  # Container VPSes have no /boot kernels: find prints nothing there, and nothing is said.
+  local latest_kernel
+  latest_kernel="$(find /boot -maxdepth 1 -name 'vmlinuz-*' | sort -V | tail -1)"
+  [[ -z "$latest_kernel" || "$latest_kernel" == "/boot/vmlinuz-$(uname -r)" ]] ||
     echo "A newer kernel is installed: reboot to load it (systemctl reboot)."
 }
 
 case "${1:-}" in
-  node) install_node node "${2:-}" "${3:-}" ;;
-  exit) install_node exit "${2:-}" "${4:-}" "${3:?usage: install.sh exit <domain> <bridge ip> [ssh public key]}" ;;
-  bridge) install_node bridge "${2:-}" "${4:-}" "${3:?usage: install.sh bridge <domain> <exit vless link> [ssh public key]}" ;;
+  node) install_node node "${2:-}" "" "${3:-}" ;;
+  exit) install_node exit "${2:-}" "${3:?usage: install.sh exit <domain> <bridge ip> [ssh public key]}" "${4:-}" ;;
+  bridge) install_node bridge "${2:-}" "${3:?usage: install.sh bridge <domain> <exit vless link> [ssh public key]}" "${4:-}" ;;
   head) install_head "${@:2}" ;;
   share-address)
     [[ $# -ge 3 ]] || die "usage: install.sh share-address <old ip> <new ip> [panel url]"

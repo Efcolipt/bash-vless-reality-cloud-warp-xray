@@ -79,16 +79,26 @@ configure_xray() {
       }]
     }
   }' <<<"$warp")"
-  api POST xray/update --data-urlencode \
-    "xraySetting=$(jq -c --argjson warp "$warp_outbound" '.outbounds += [$warp]' "$root/config/xray-template.json")" >/dev/null
+  # The users' own sites go through WARP: many of them refuse foreign hosting addresses.
+  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson warp "$warp_outbound" \
+    --argjson country_rules "$(country_rules warp)" '.outbounds += [$warp] | .routing.rules += $country_rules' \
+    "$root/config/xray-template.json")" >/dev/null
+}
+
+# country_rules <outbound tag>: routing rules that send the sites of $country to that outbound.
+country_rules() {
+  jq -nc --arg country "$country" --arg outbound "$1" '[
+    { type: "field", domain: ["geosite:category-" + $country], outboundTag: $outbound },
+    { type: "field", ip: ["geoip:" + $country], outboundTag: $outbound }
+  ]'
 }
 
 # configure_bridge <vless REALITY link of a client on the exit server>: users reach this server's domestic
 # address, which blocks of foreign hosting addresses cannot cut. Sites of the bridge's country leave from it
-# directly; everything else goes on to the exit, the first outbound and so the default.
+# directly; everything else goes on to the exit, the first outbound and so the default. The template's
+# exceptions leave through the exit too, and WARP stays the exit's business.
 configure_bridge() {
   local link="$1" rest host_port query exit_outbound
-  [[ "$country" =~ ^[a-z]{2}$ ]] || die "COUNTRY must be a two-letter code, such as ru."
   log "Bridge routing: geosite:category-$country and geoip:$country direct, the rest through the exit"
   [[ "$link" == vless://*security=reality* ]] || die "The exit must be a vless:// REALITY link."
   rest="${link#vless://}"
@@ -115,23 +125,22 @@ configure_bridge() {
       }
     }
   }')"
-  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson exit "$exit_outbound" --arg country "$country" '
+  api POST xray/update --data-urlencode "xraySetting=$(jq -c --argjson exit "$exit_outbound" \
+    --argjson country_rules "$(country_rules direct)" '
     .outbounds = [$exit] + .outbounds
     | .routing.rules = [
-        (.routing.rules[] | select(.inboundTag == ["api"])),
-        { type: "field", ip: ["geoip:private"], outboundTag: "blocked" },
-        { type: "field", protocol: ["bittorrent"], outboundTag: "blocked" },
-        { type: "field", domain: ["geosite:category-ads-all"], outboundTag: "blocked" },
-        { type: "field", domain: ["geosite:category-" + $country], outboundTag: "direct" },
-        { type: "field", ip: ["geoip:" + $country], outboundTag: "direct" }
-      ]' "$root/config/xray-template.json")" >/dev/null
+        .routing.rules[]
+        | select(.outboundTag != "warp")
+        | if .outboundTag == "direct" then .outboundTag = "exit" else . end
+      ] + $country_rules' "$root/config/xray-template.json")" >/dev/null
 }
 
 # add_inbounds <domain> <node | exit | bridge>: inbounds that share one client "admin", all three on a node and
 # VLESS REALITY alone on an exit or a bridge; sets sub_id, its subscription ID.
 add_inbounds() {
-  local domain="$1" mode="$2" name="${1%%.*}" server_ip uuid hysteria_auth
-  log "Inbounds: VLESS REALITY $reality_port$([[ "$mode" != node ]] || echo ", XHTTP REALITY $xhttp_port, Hysteria2 $hysteria_port")"
+  local domain="$1" mode="$2" name="${1%%.*}" inbounds="VLESS REALITY $reality_port" server_ip uuid hysteria_auth
+  [[ "$mode" != node ]] || inbounds+=", XHTTP REALITY $xhttp_port, Hysteria2 $hysteria_port"
+  log "Inbounds: $inbounds"
   server_ip="$(getent ahostsv4 "$domain" | awk 'NR == 1 { print $1 }')"
   uuid="$(api GET server/getNewUUID | jq -r .uuid)"
   sub_id="$(openssl rand -hex 8)"
@@ -275,7 +284,7 @@ configure_subscription() {
     subThemeDir: "/etc/x-ui/sub-theme/",
     subProfileMode: "builtin",
     remarkTemplate: "{{INBOUND}}|📊 {{TRAFFIC_LEFT}}|⏳ {{TIME_LEFT}}",
-    subUpdates: 3,
+    subUpdates: 1,
     subEnableRouting: true,
     subRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
     subJsonRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),

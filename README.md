@@ -46,7 +46,7 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `XUI_ACME_EMAIL` | none | Email for Let's Encrypt notices. |
 | `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
 | `HEAD_IP` | none | The head's IP: the node's panel answers only it, and the subscription port stays closed. |
-| `COUNTRY` | `ru` | The bridge's country code: its sites leave from the bridge directly. |
+| `COUNTRY` | `ru` | The users' country code: its sites leave a bridge directly and a node through WARP. |
 
 ## What a node gets
 
@@ -60,7 +60,9 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | 80/tcp | Let's Encrypt renewals. |
 
 An exit and a bridge get VLESS REALITY on 443/tcp alone, the profile that looks most like an ordinary HTTPS site;
-the exit takes it only from its bridge. With `HEAD_IP` the panel port is open to the head only and 2096 is closed.
+the exit takes it only from its bridge and never opens 2096. With `HEAD_IP` the panel port is open to the head only
+and 2096 is closed; without it the panel answers everyone, so set it on an exit. Port 80 stays open for certificate
+renewals.
 
 - **Self-steal REALITY.** REALITY borrows the TLS handshake of the server's own site: Caddy serves a decoy page on
   127.0.0.1 with the domain's certificate, for any SNI. Clients send the server's domain as SNI, it resolves to this
@@ -75,13 +77,13 @@ the exit takes it only from its bridge. With `HEAD_IP` the panel port is open to
 - **Routing on the server**, in order: private addresses and BitTorrent blocked; `anthropic.com`, `claude.ai`,
   `statsig.com`, `sentry.io`, `githubusercontent.com` direct (before the ad filter, which contains
   `statsig.anthropic.com`); ads blocked; OpenAI through Cloudflare WARP, because it refuses many hosting
-  addresses; sites blocked in Russia direct; Russian sites through WARP, because many of them refuse foreign
+  addresses; the sites of the users' country (`COUNTRY`) through WARP, because many of them refuse foreign
   hosting addresses. Spotify, Reddit, NVIDIA and others stay direct: through WARP they time out or stall.
   WARP dials Cloudflare's IPv4 endpoint: by name the core can pick the AAAA, which never answers.
 - **System.** Packages and the kernel upgraded first (the summary asks for a reboot when the kernel changed), BBR
   with fq and buffers sized for QUIC, MPTCP off (Go listens with it by default, and listening IPv4 MPTCP sockets
   gave remote root on unpatched kernels), an nftables firewall that drops everything but SSH and the ports above,
-  fail2ban on SSH, Xray pinned to `XRAY_VERSION`, Russian geodata refreshed every night at 04:00
+  fail2ban on SSH, Xray pinned to `XRAY_VERSION`, geodata refreshed every night at 04:00
   Moscow time (a refresh restarts the core, so it runs when nobody is online).
 
 ## Several nodes behind a head

@@ -8,6 +8,9 @@ die() {
 
 require_root() { [[ $EUID -eq 0 ]] || die "Run as root."; }
 
+# require_ipv4 <value> <name>: an address from the command line goes into firewall rules, which are written last.
+require_ipv4() { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "$2 must be an IPv4 address, not '$1'."; }
+
 install_packages() {
   command -v apt-get >/dev/null || die "Debian or Ubuntu is required."
   apt-get update -q
@@ -101,12 +104,12 @@ CONF
   log "SSH: $(head -1 "$ssh_access_file") — also in $ssh_access_file"
 }
 
-# protect <tcp ports> [udp ports] [udp hop range] [nft rule …]: default-drop firewall plus fail2ban on SSH;
-# the rules open a port to one address.
+# protect <tcp ports> <udp ports> <udp hop range> [nft rule …]: default-drop firewall plus fail2ban on SSH;
+# empty arguments open nothing, and each rule opens a port to one address.
 protect() {
-  local tcp_ports="$1" udp_ports="${2:-}" hop_ports="${3:-}" ssh_port_list interface udp_rule="" hop_table=""
+  local tcp_ports="$1" udp_ports="$2" hop_ports="$3" ssh_port_list interface udp_rule="" hop_table=""
   local rule rule_lines=""
-  shift $(($# < 3 ? $# : 3))
+  shift 3
   for rule in "$@"; do rule_lines+=$'\n\t\t'"$rule"; done
   ssh_port_list="$(ssh_ports)"
   interface="$(default_interface)"
