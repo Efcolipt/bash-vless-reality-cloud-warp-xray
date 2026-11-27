@@ -1,13 +1,16 @@
 # 3x-ui: install, API, Xray core, WARP, routing, inbounds, subscription, geodata, share address.
 
-# install_panel <domain | ip>: installs 3x-ui on PostgreSQL with a Let's Encrypt certificate for the
-# domain, or for the server's IP when no domain is given; sets panel, certificate_dir and XUI_*.
+# install_panel <domain | ip>: installs 3x-ui (SQLite, the installer's choice below 500 clients) with a
+# Let's Encrypt certificate for the domain, or for the server's IP when no domain is given; sets panel,
+# certificate_dir and XUI_*. The installer's non-interactive PostgreSQL path starts x-ui before the DSN
+# exists and leaves the panel without a database.
 install_panel() {
   local domain="${1:-}" ssl_mode=ip
   [[ -n "$domain" ]] && ssl_mode=domain
-  log "3x-ui $xui_version on PostgreSQL"
+  log "3x-ui $xui_version"
   curl -fsSL -o /tmp/x-ui-install.sh "https://raw.githubusercontent.com/MHSanaei/3x-ui/$xui_version/install.sh"
-  XUI_NONINTERACTIVE=1 XUI_SSL_MODE="$ssl_mode" XUI_DOMAIN="$domain" XUI_DB_TYPE=postgres \
+  # acme.sh installs under $HOME and the installer then calls /root/.acme.sh: runners without HOME break it.
+  HOME=/root XUI_NONINTERACTIVE=1 XUI_SSL_MODE="$ssl_mode" XUI_DOMAIN="$domain" \
     bash /tmp/x-ui-install.sh "$xui_version" </dev/null
   certificate_dir="/root/cert/${domain:-ip}"
   [[ -s "$certificate_dir/fullchain.pem" ]] ||
