@@ -45,8 +45,8 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | 2096/tcp | Subscription, HTTPS. |
 | 80/tcp | Let's Encrypt renewals. |
 
-- **Self-steal REALITY.** REALITY borrows the TLS handshake of our own site: Caddy serves a decoy page on
-  127.0.0.1 with the domain's certificate, for any SNI. Clients send our domain as SNI, it resolves to this
+- **Self-steal REALITY.** REALITY borrows the TLS handshake of the server's own site: Caddy serves a decoy page on
+  127.0.0.1 with the domain's certificate, for any SNI. Clients send the server's domain as SNI, it resolves to this
   server, and a prober that is not a client gets the decoy site.
 - **One client, three profiles.** All inbounds share the client `admin` and one subscription; the subscription
   hands out the server's IP, not its domain.
@@ -136,3 +136,4 @@ To remove the panel: `x-ui uninstall`.
 | `config/sysctl.conf` | Kernel network settings. |
 | `config/caddy/Caddyfile` | Decoy site on 127.0.0.1. |
 | `config/decoy/index.html` | Decoy page. |
+| `config/sub-theme/index.html` | Subscription page: status, usage, one-tap import into Happ, v2rayNG, Hiddify and Clash, the link with a copy button; Russian or English by the browser. Title, announcement and support link come from the panel settings. |

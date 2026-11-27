@@ -102,6 +102,8 @@ protect() {
 	}
 }"
   systemctl disable --now ufw firewalld >/dev/null 2>&1 || true
+  # ICMP goes before the invalid drop: conntrack marks IPv6 neighbour discovery invalid, and dropping it
+  # loses the IPv6 gateway, so every IPv6 connection times out.
   cat >/etc/nftables.conf <<NFT
 #!/usr/sbin/nft -f
 flush ruleset
@@ -111,8 +113,8 @@ table inet filter {
 		type filter hook input priority filter; policy drop;
 		iif lo accept
 		ct state established,related accept
-		ct state invalid drop
 		meta l4proto { icmp, ipv6-icmp } accept
+		ct state invalid drop
 		tcp dport { $ssh_port_list, $tcp_ports } accept
 		$udp_rule
 	}

@@ -210,16 +210,22 @@ add_inbounds() {
   }' | add_inbound
 }
 
-# configure_subscription <host>: HTTPS (plain HTTP would leak every client key) and client auto-setup
-# from the RoscomVPN routing profiles, which the panel refreshes in the background: Happ and JSON
-# subscriptions, Incy and Clash/Mihomo get split routing (Russian sites direct, ads blocked).
-# Sets subscription_port and subscription_base, the link without the ID.
+# configure_subscription <host>: HTTPS (plain HTTP would leak every client key), the subscription page
+# from config/sub-theme, link names, and client auto-setup from the RoscomVPN routing profiles, which the
+# panel refreshes in the background: Happ and JSON subscriptions, Incy and Clash/Mihomo get split routing
+# (Russian sites direct, ads blocked). Sets subscription_port and subscription_base, the link without the ID.
 configure_subscription() {
   local settings routing=https://raw.githubusercontent.com/hydraponique/roscomvpn-routing/refs/heads/main
-  log "Subscription: HTTPS and client auto-setup"
+  log "Subscription: HTTPS, page and client auto-setup"
+  install -d /etc/x-ui/sub-theme
+  install -m 644 "$root/config/sub-theme/index.html" /etc/x-ui/sub-theme/index.html
+  # A segment that holds only the unlimited marker drops out, so unlimited clients see just the profile name.
   settings="$(api POST setting/all | jq -c --arg certificate_dir "$certificate_dir" --arg routing "$routing" '. + {
     subCertFile: ($certificate_dir + "/fullchain.pem"),
     subKeyFile: ($certificate_dir + "/privkey.pem"),
+    subThemeDir: "/etc/x-ui/sub-theme/",
+    subProfileMode: "builtin",
+    remarkTemplate: "{{INBOUND}}|📊 {{TRAFFIC_LEFT}}|⏳ {{TIME_LEFT}}",
     subUpdates: 3,
     subEnableRouting: true,
     subRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
