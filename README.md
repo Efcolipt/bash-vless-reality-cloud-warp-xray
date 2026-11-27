@@ -31,7 +31,10 @@ XUI_API_TOKEN=<head token> /opt/vpn/install.sh share-address <old ip> <new ip> <
 ```
 
 The SSH key is optional. With it the server gets a new sudo user on a random port, and root and password logins
-stop working: save what the script prints at the end. Without it SSH stays as it is.
+stop working; the new access line is printed at once and kept in `/root/vpn-ssh.txt`. Without it SSH stays as it is.
+
+The install runs as a systemd unit and the terminal only follows `/root/vpn-install.log`, so a dropped SSH session
+does not stop it: read the log from the hoster's console or after logging in again.
 
 Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vpn/install.sh node …`):
 
@@ -40,6 +43,7 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `HYSTERIA_BANDWIDTH` | `125000000` (1 Gbit/s) | Hysteria2 brutal sends at exactly this rate in bytes per second: set the server's real bandwidth. |
 | `XRAY_VERSION` | `v26.11.9` | Xray core the panel runs. |
 | `XUI_ACME_EMAIL` | none | Email for Let's Encrypt notices. |
+| `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
 
 ## What a node gets
 

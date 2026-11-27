@@ -62,9 +62,10 @@ harden_ssh() {
   rm -f "$key_file"
 
   log "SSH: new sudo user, random port, key login only"
-  ssh_user="$(shuf -n 1 -e orbit falcon cedar quartz harbor lumen nimbus ember tundra vertex)$(shuf -i 1000-9999 -n 1)"
+  # SSH_USER and SSH_PORT let a remote operator know the new access before the session that started it drops.
+  ssh_user="${SSH_USER:-$(shuf -n 1 -e orbit falcon cedar quartz harbor lumen nimbus ember tundra vertex)$(shuf -i 1000-9999 -n 1)}"
   ssh_password="$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)"
-  port="$(shuf -i 20000-49000 -n 1)"
+  port="${SSH_PORT:-$(shuf -i 20000-49000 -n 1)}"
   getent group sudo >/dev/null && group=sudo || group=wheel
   useradd -m -s /bin/bash -G "$group" "$ssh_user"
   echo "$ssh_user:$ssh_password" | chpasswd

@@ -23,6 +23,26 @@ hysteria_hop_ports=20000-50000
 decoy_port=8443
 # Minimal Debian images ship without sudo, which the SSH user needs.
 base_packages=(curl jq openssl nftables fail2ban sudo)
+install_log=/root/vpn-install.log
+
+# SSH and the firewall change under the session that runs an install, and that session may drop. The install
+# runs as a transient systemd unit that outlives it; this terminal only follows the log.
+if [[ -z "${INVOCATION_ID:-}" && "${1:-}" =~ ^(node|bridge|head)$ ]]; then
+  require_root
+  unit="vpn-install-$(date +%s)"
+  : >"$install_log"
+  systemd-run --quiet --unit "$unit" \
+    --setenv=XRAY_VERSION="$xray_version" --setenv=HYSTERIA_BANDWIDTH="$hysteria_bandwidth" \
+    --setenv=XUI_ACME_EMAIL="${XUI_ACME_EMAIL:-}" --setenv=SSH_USER="${SSH_USER:-}" --setenv=SSH_PORT="${SSH_PORT:-}" \
+    --property=StandardOutput="append:$install_log" --property=StandardError="append:$install_log" \
+    "$root/install.sh" "$@"
+  tail -n +1 -f "$install_log" &
+  follower=$!
+  while systemctl is-active --quiet "$unit"; do sleep 2; done
+  kill "$follower"
+  [[ "$(systemctl show -p Result --value "$unit")" == success ]] || die "The install failed: see $install_log."
+  exit 0
+fi
 
 # install_node <domain> [ssh public key] [exit link]: with an exit link the node is a bridge.
 install_node() {
