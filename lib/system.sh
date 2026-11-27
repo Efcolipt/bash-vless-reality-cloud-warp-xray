@@ -42,9 +42,17 @@ UNIT
   systemctl enable --now -q qdisc-fq.service
 }
 
-# Sets ssh_user, ssh_password and a random SSH port; root and passwords stop working.
+ssh_access_file=/root/vpn-ssh.txt
+
+# A new sudo user on a random port, key login only; root and passwords stop working. The access line is
+# printed and kept in $ssh_access_file at once, so a later failed step cannot lock the owner out, and a
+# rerun keeps that user instead of adding another one.
 harden_ssh() {
-  local public_key="$1" key_file port group
+  local public_key="$1" key_file port group ssh_user ssh_password
+  if [[ -s "$ssh_access_file" ]]; then
+    log "SSH already hardened: $(head -1 "$ssh_access_file")"
+    return 0
+  fi
   key_file="$(mktemp)"
   printf '%s\n' "$public_key" >"$key_file"
   ssh-keygen -l -f "$key_file" >/dev/null 2>&1 || {
@@ -78,12 +86,16 @@ PubkeyAuthentication yes
 AuthenticationMethods publickey
 CONF
   sshd -t
+  install -m 600 /dev/null "$ssh_access_file"
+  printf 'ssh -p %s %s@<server ip>   (root and passwords are off)\nSudo password for the hoster console: %s\n' \
+    "$port" "$ssh_user" "$ssh_password" >"$ssh_access_file"
   if systemctl is-enabled --quiet ssh.socket 2>/dev/null; then
     systemctl daemon-reload
     systemctl restart ssh.socket
   else
     systemctl restart ssh
   fi
+  log "SSH: $(head -1 "$ssh_access_file") — also in $ssh_access_file"
 }
 
 # protect <tcp ports> [udp ports] [udp hop range]: default-drop firewall plus fail2ban on SSH.

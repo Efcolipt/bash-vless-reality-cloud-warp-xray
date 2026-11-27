@@ -68,10 +68,7 @@ Done.
   Xray:   $(api GET server/status | jq -r .xray.version)
   $1
 DONE
-  [[ -z "${ssh_user:-}" ]] || cat <<SSH
-  SSH:    ssh -p $(ssh_ports) $ssh_user@<server ip>   (root and passwords are off)
-  Sudo password for the hoster's console: $ssh_password
-SSH
+  [[ ! -s "$ssh_access_file" ]] || sed 's/^/  /' "$ssh_access_file"
   echo "The login, the password and the API token are kept in /etc/x-ui/install-result.env."
 }
 
