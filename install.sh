@@ -6,12 +6,14 @@
 #   install.sh head [ssh public key]                        head panel, one subscription for all nodes
 #   install.sh share-address <old ip> <new ip> [panel url]  after the server's IP changes
 #   install.sh update-geodata                               what the nightly timer runs
+#   install.sh check-exit                                   what a bridge's exit check runs
 set -euo pipefail
 
 root="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 source "$root/lib/system.sh"
 source "$root/lib/panel.sh"
 source "$root/lib/decoy.sh"
+source "$root/lib/monitor.sh"
 
 xui_version=v3.11.0
 xray_version="${XRAY_VERSION:-v26.11.9}"
@@ -41,6 +43,7 @@ if [[ -z "${INVOCATION_ID:-}" && "${1:-}" =~ ^(node|exit|bridge|head)$ ]]; then
     --setenv=XRAY_VERSION="$xray_version" --setenv=HYSTERIA_BANDWIDTH="$hysteria_bandwidth" \
     --setenv=XUI_ACME_EMAIL="${XUI_ACME_EMAIL:-}" --setenv=SSH_USER="${SSH_USER:-}" --setenv=SSH_PORT="${SSH_PORT:-}" \
     --setenv=HEAD_IP="${HEAD_IP:-}" --setenv=COUNTRY="$country" \
+    --setenv=TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" --setenv=TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}" \
     --property=StandardOutput="append:$install_log" --property=StandardError="append:$install_log" \
     "$root/install.sh" "$@" &
   runner=$!
@@ -59,6 +62,7 @@ install_node() {
   [[ "$country" =~ ^[a-z]{2}$ ]] || die "COUNTRY must be a two-letter code, such as ru."
   [[ "$mode" != exit ]] || require_ipv4 "$peer" "The bridge IP"
   [[ -z "${HEAD_IP:-}" ]] || require_ipv4 "$HEAD_IP" HEAD_IP
+  [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -n "${TELEGRAM_CHAT_ID:-}" ]] || die "Set TELEGRAM_CHAT_ID with TELEGRAM_BOT_TOKEN."
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
   install_packages "${base_packages[@]}"
   tune_kernel
@@ -70,6 +74,7 @@ install_node() {
   add_inbounds "$domain" "$mode"
   configure_subscription "$domain"
   schedule_geodata
+  [[ "$mode" != bridge || -z "${TELEGRAM_BOT_TOKEN:-}" ]] || schedule_exit_check
   case "$mode" in
     node) tcp_ports+=", $reality_port, $xhttp_port" udp_ports="$hysteria_port, $hysteria_hop_ports" hop_ports="$hysteria_hop_ports" ;;
     exit) rules+=("ip saddr $peer tcp dport $reality_port accept") ;;
@@ -146,6 +151,10 @@ case "${1:-}" in
   update-geodata)
     load_panel
     update_geodata
+    ;;
+  check-exit)
+    load_panel
+    check_exit
     ;;
   *) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' >&2 && exit 1 ;;
 esac
