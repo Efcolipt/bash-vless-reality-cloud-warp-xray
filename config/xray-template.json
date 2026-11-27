@@ -105,16 +105,7 @@
       },
       {
         "type": "field",
-        "domain": [
-          "geosite:openai",
-          "geosite:spotify",
-          "geosite:tiktok",
-          "geosite:reddit",
-          "geosite:unity",
-          "geosite:nvidia",
-          "geosite:docker",
-          "geosite:microsoft"
-        ],
+        "domain": ["geosite:openai"],
         "outboundTag": "warp"
       },
       { "type": "field", "ip": ["ext:geoip_RU.dat:ru-blocked", "geoip:telegram"], "outboundTag": "direct" },

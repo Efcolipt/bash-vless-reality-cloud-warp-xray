@@ -56,6 +56,7 @@ configure_xray() {
     --data-urlencode "privateKey=$(awk -F': ' '/^PrivateKey/ { print $2 }' <<<"$keys")" \
     --data-urlencode "publicKey=$(awk -F': ' '/PublicKey/ { print $2 }' <<<"$keys")" | jq -r .)"
   # reserved is the three raw bytes of client_id; jq's @base64d would mangle bytes above 127.
+  # The endpoint is Cloudflare's IPv4: by name the core may dial the AAAA, which never answers (3x-ui #5205).
   reserved="$(jq -r '.config.config.client_id // .data.client_id' <<<"$warp" | base64 -d | od -An -tu1 | jq -sc .)"
   warp_outbound="$(jq -c --argjson reserved "$reserved" '.config.config as $device | {
     tag: "warp",
@@ -69,7 +70,10 @@ configure_xray() {
       secretKey: .data.private_key,
       address: [($device.interface.addresses.v4 + "/32"), ($device.interface.addresses.v6 + "/128")],
       reserved: $reserved,
-      peers: [{ publicKey: $device.peers[0].public_key, endpoint: $device.peers[0].endpoint.host }]
+      peers: [{
+        publicKey: $device.peers[0].public_key,
+        endpoint: (($device.peers[0].endpoint.v4 | sub(":[0-9]+$"; "")) + ":" + ($device.peers[0].endpoint.ports[0] | tostring))
+      }]
     }
   }' <<<"$warp")"
   api POST xray/update --data-urlencode \
@@ -206,13 +210,36 @@ add_inbounds() {
   }' | add_inbound
 }
 
-# secure_subscription <host>: without its own certificate the subscription server answers plain HTTP
-# and leaks every client key. Sets subscription_port and subscription_base, the link without the ID.
-secure_subscription() {
-  local settings
-  log "Subscription over HTTPS"
-  settings="$(api POST setting/all | jq -c --arg certificate_dir "$certificate_dir" \
-    '.subCertFile = ($certificate_dir + "/fullchain.pem") | .subKeyFile = ($certificate_dir + "/privkey.pem")')"
+# configure_subscription <host>: HTTPS (plain HTTP would leak every client key) and client auto-setup
+# from the RoscomVPN routing profiles, which the panel refreshes in the background: Happ and JSON
+# subscriptions, Incy and Clash/Mihomo get split routing (Russian sites direct, ads blocked).
+# Sets subscription_port and subscription_base, the link without the ID.
+configure_subscription() {
+  local settings routing=https://raw.githubusercontent.com/hydraponique/roscomvpn-routing/refs/heads/main
+  log "Subscription: HTTPS and client auto-setup"
+  settings="$(api POST setting/all | jq -c --arg certificate_dir "$certificate_dir" --arg routing "$routing" '. + {
+    subCertFile: ($certificate_dir + "/fullchain.pem"),
+    subKeyFile: ($certificate_dir + "/privkey.pem"),
+    subUpdates: 3,
+    subEnableRouting: true,
+    subRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
+    subJsonRoutingRules: ($routing + "/HAPP/DEFAULT.JSON"),
+    subHappAutoDetect: true,
+    subHappAutoConnect: true,
+    subHappAutoConnectType: "lowestdelay",
+    subHappSubExpire: true,
+    subHappNotificationExpire: true,
+    subHappExcludeRoutes: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16",
+    subHappExcludeApns: true,
+    subIncyAppAutoDetect: true,
+    subIncyEnableRouting: true,
+    subIncyRoutingRules: ($routing + "/INCY/DEFAULT.JSON"),
+    subClashEnable: true,
+    subClashAutoDetect: true,
+    subClashEnableRouting: true,
+    subClashRules: ($routing + "/MIHOMO/default.yaml"),
+    subClashRemoteDNS: true
+  }')"
   api POST setting/update -H 'Content-Type: application/json' --data "$settings" >/dev/null
   subscription_port="$(jq -r .subPort <<<"$settings")"
   subscription_base="https://$1:$subscription_port$(jq -r .subPath <<<"$settings")"

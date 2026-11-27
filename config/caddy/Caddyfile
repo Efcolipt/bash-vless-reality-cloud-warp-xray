@@ -2,7 +2,7 @@
 	auto_https off
 }
 
-https://@DOMAIN@:@PORT@ {
+https://:@PORT@ {
 	bind 127.0.0.1
 	tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
 	root * /var/www/decoy

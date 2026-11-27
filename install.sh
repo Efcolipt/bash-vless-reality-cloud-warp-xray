@@ -33,7 +33,7 @@ install_node() {
   pin_xray
   configure_xray
   add_inbounds "$domain"
-  secure_subscription "$domain"
+  configure_subscription "$domain"
   schedule_geodata
   protect "80, $reality_port, $xhttp_port, $XUI_PANEL_PORT, $subscription_port" \
     "$hysteria_port, $hysteria_hop_ports" "$hysteria_hop_ports"
@@ -50,7 +50,7 @@ install_head() {
   [[ -z "$public_key" ]] || harden_ssh "$public_key"
   install_panel
   local host="${panel#*://}"
-  secure_subscription "${host%%[:/]*}"
+  configure_subscription "${host%%[:/]*}"
   protect "80, $XUI_PANEL_PORT, $subscription_port"
   systemctl restart x-ui
   wait_for_panel

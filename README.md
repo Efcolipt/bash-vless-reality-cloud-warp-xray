@@ -46,15 +46,21 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | 80/tcp | Let's Encrypt renewals. |
 
 - **Self-steal REALITY.** REALITY borrows the TLS handshake of our own site: Caddy serves a decoy page on
-  127.0.0.1 with the domain's certificate. Clients send our domain as SNI, it resolves to this server, and a
-  prober that is not a client gets the decoy site.
+  127.0.0.1 with the domain's certificate, for any SNI. Clients send our domain as SNI, it resolves to this
+  server, and a prober that is not a client gets the decoy site.
 - **One client, three profiles.** All inbounds share the client `admin` and one subscription; the subscription
   hands out the server's IP, not its domain.
+- **Client auto-setup.** The subscription carries split routing from
+  [RoscomVPN](https://github.com/hydraponique/roscomvpn-routing), which the panel refreshes in the background:
+  Russian sites go direct from the user's device, YouTube, Telegram and GitHub through the VPN, ads are blocked.
+  Happ gets it as a header (plus autoconnect to the fastest server, local networks and Apple push outside the
+  tunnel), Incy as an autorouting profile, Clash/Mihomo inside the YAML, JSON subscriptions embedded.
 - **Routing on the server**, in order: private addresses and BitTorrent blocked; `anthropic.com`, `claude.ai`,
   `statsig.com`, `sentry.io`, `githubusercontent.com` direct (before the ad filter, which contains
-  `statsig.anthropic.com`); ads blocked; OpenAI, Spotify, TikTok, Reddit, Unity, NVIDIA, Docker and Microsoft
-  through Cloudflare WARP, because they refuse Russian or hosting addresses; sites blocked in Russia direct;
-  Russian sites through WARP, because many of them refuse foreign hosting addresses.
+  `statsig.anthropic.com`); ads blocked; OpenAI through Cloudflare WARP, because it refuses many hosting
+  addresses; sites blocked in Russia direct; Russian sites through WARP, because many of them refuse foreign
+  hosting addresses. Spotify, Reddit, NVIDIA and others stay direct: through WARP they time out or stall.
+  WARP dials Cloudflare's IPv4 endpoint: by name the core can pick the AAAA, which never answers.
 - **System.** BBR with fq and buffers sized for QUIC, an nftables firewall that drops everything but SSH and the
   ports above, fail2ban on SSH, Xray pinned to `XRAY_VERSION`, Russian geodata refreshed every night at 04:00
   Moscow time (a refresh restarts the core, so it runs when nobody is online).
@@ -77,9 +83,12 @@ Since Xray 26.9.8, REALITY refuses a ClientHello without an X25519MLKEM768 key s
 client, and the server logs nothing.
 
 - **Happ**, **v2rayNG**: current versions work with all three profiles.
-- **Throne**: in **Preset Settings → TLS → Default Fingerprint** choose `chrome` (Throne's own fingerprint
+- **Throne**: 1.4.5 or newer — 1.4.2 and older run a sing-box fork that strips X25519MLKEM768 whatever the
+  fingerprint. In **Preset Settings → TLS → Default Fingerprint** choose `chrome` (Throne's own fingerprint
   overrides the subscription); turn the DNS cache on (optimistic, persistent); MTU 1400; mux off; log level warn.
   Throne updates have reset these settings before.
+- **Hiddify, NekoBox, Karing, sing-box**: sing-box 1.14.5 / 1.15.0-alpha.14 or newer (sing-box stripped the key
+  share until 14.11.2026). Until then they keep Hysteria2, which is not REALITY.
 - **mihomo**: `support-x25519mlkem768: true` under `reality-opts`.
 
 ## When users cannot connect
