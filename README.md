@@ -47,6 +47,7 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
 | `HEAD_IP` | none | The head's IP: the node's panel answers only it, and the subscription port stays closed. |
 | `COUNTRY` | `ru` | The users' country code: its sites leave a bridge directly and a node through WARP. |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | none | A bridge probes its exit every 5 minutes and tells this chat when the exit stops or starts answering. |
 
 ## What a node gets
 
@@ -116,6 +117,10 @@ Check from the bridge that the exit answers before moving users: some data cente
 too. When the exit's address gets blocked anyway, give it a new one and put it into the `exit` outbound on
 the bridge's panel (**Xray Configs → Outbounds**); users keep their subscription.
 
+A head reports a node that stops answering (enable `node.down` in its Telegram bot), not a bridge whose path to
+the exit got blocked: install the bridge with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, and it probes the exit
+every 5 minutes and writes to that chat when the exit stops or starts answering.
+
 ## Clients
 
 Since Xray 26.9.8, REALITY refuses a ClientHello without an X25519MLKEM768 key share
@@ -169,7 +174,8 @@ To remove the panel: `x-ui uninstall`.
 
 | Path | What |
 |---|---|
-| `install.sh` | Entry point: `node`, `exit`, `bridge`, `head`, `share-address`, `update-geodata`. |
+| `install.sh` | Entry point: `node`, `exit`, `bridge`, `head`, `share-address`, `update-geodata`, `check-exit`. |
+| `lib/monitor.sh` | A bridge's exit check and its Telegram message. |
 | `lib/system.sh` | Packages, kernel tuning, SSH, firewall, fail2ban. |
 | `lib/panel.sh` | 3x-ui install and API: Xray core, WARP or bridge routing, inbounds, subscription, geodata, share address. |
 | `lib/decoy.sh` | Caddy decoy site for self-steal REALITY. |
