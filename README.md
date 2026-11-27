@@ -47,6 +47,7 @@ Optional variables, set before the command (`HYSTERIA_BANDWIDTH=12500000 /opt/vp
 | `SSH_USER`, `SSH_PORT` | random | The new SSH user and port, so you know them before the session that started the install drops. |
 | `HEAD_IP` | none | The head's IP: the node's panel answers only it, and the subscription port stays closed. |
 | `COUNTRY` | `ru` | The users' country code: its sites leave a bridge directly and a node through WARP. |
+| `WHITELIST_SNI` | none | A domestic site that mobile whitelists keep reachable (`ya.ru`): a bridge adds a second VLESS REALITY profile on 2053/tcp that borrows it, for networks that let only listed sites through. Check it with `xray tls ping` first: TLS 1.3 and X25519. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | none | A bridge probes its exit every 5 minutes and tells this chat when the exit stops or starts answering. |
 
 ## What a node gets

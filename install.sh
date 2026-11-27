@@ -22,6 +22,9 @@ hysteria_bandwidth="${HYSTERIA_BANDWIDTH:-125000000}"
 # The users' country: its geosite:category-<code> and geoip:<code> sites leave a bridge directly and a node
 # through WARP.
 country="${COUNTRY:-ru}"
+# A domestic site that mobile whitelists keep reachable, borrowed by a bridge's second REALITY inbound.
+whitelist_sni="${WHITELIST_SNI:-}"
+whitelist_port=2053
 reality_port=443
 xhttp_port=11849
 hysteria_port=11274
@@ -42,7 +45,7 @@ if [[ -z "${INVOCATION_ID:-}" && "${1:-}" =~ ^(node|exit|bridge|head)$ ]]; then
   systemd-run --quiet --wait --unit "$unit" \
     --setenv=XRAY_VERSION="$xray_version" --setenv=HYSTERIA_BANDWIDTH="$hysteria_bandwidth" \
     --setenv=XUI_ACME_EMAIL="${XUI_ACME_EMAIL:-}" --setenv=SSH_USER="${SSH_USER:-}" --setenv=SSH_PORT="${SSH_PORT:-}" \
-    --setenv=HEAD_IP="${HEAD_IP:-}" --setenv=COUNTRY="$country" \
+    --setenv=HEAD_IP="${HEAD_IP:-}" --setenv=COUNTRY="$country" --setenv=WHITELIST_SNI="$whitelist_sni" \
     --setenv=TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" --setenv=TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}" \
     --property=StandardOutput="append:$install_log" --property=StandardError="append:$install_log" \
     "$root/install.sh" "$@" &
@@ -62,6 +65,8 @@ install_node() {
   [[ "$country" =~ ^[a-z]{2}$ ]] || die "COUNTRY must be a two-letter code, such as ru."
   [[ "$mode" != exit ]] || require_ipv4 "$peer" "The bridge IP"
   [[ -z "${HEAD_IP:-}" ]] || require_ipv4 "$HEAD_IP" HEAD_IP
+  [[ "$whitelist_sni" =~ ^([a-z0-9-]+\.)*[a-z0-9-]+\.[a-z]+$ || -z "$whitelist_sni" ]] ||
+    die "WHITELIST_SNI must be a domain name, such as ya.ru."
   [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -n "${TELEGRAM_CHAT_ID:-}" ]] || die "Set TELEGRAM_CHAT_ID with TELEGRAM_BOT_TOKEN."
   [[ -n "$(getent ahostsv4 "$domain")" ]] || die "$domain does not resolve: create its A record first."
   install_packages "${base_packages[@]}"
@@ -79,7 +84,7 @@ install_node() {
   case "$mode" in
     node) tcp_ports+=", $reality_port, $xhttp_port" udp_ports="$hysteria_port, $hysteria_hop_ports" hop_ports="$hysteria_hop_ports" ;;
     exit) rules+=("ip saddr $peer tcp dport $reality_port accept") ;;
-    bridge) tcp_ports+=", $reality_port" ;;
+    bridge) tcp_ports+=", $reality_port${whitelist_sni:+, $whitelist_port}" ;;
   esac
   if [[ -n "${HEAD_IP:-}" ]]; then
     rules+=("ip saddr $HEAD_IP tcp dport $XUI_PANEL_PORT accept")
